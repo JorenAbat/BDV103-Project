@@ -3,7 +3,11 @@ import bodyParser from 'koa-bodyparser';
 import qs from 'koa-qs';
 import routes from './routes';
 
+const cors = require('@koa/cors');
+
+
 const app = new Koa();
+app.use(cors());
 qs(app);
 
 app.use(bodyParser());

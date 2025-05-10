@@ -3,8 +3,38 @@ import adapter from '../adapter';
 const router = new Router();
 
 router.get('/books', async (ctx) => {
-    const filters = ctx.query.filters as Array<{ from?: number, to?: number }>;
-    // TODO: validate filters
+    // Step 1: Get and parse filters from the URL
+    let parsedFilters;
+    try {
+        // If filters exist in the URL, convert them from string to array
+        parsedFilters = ctx.query.filters ? JSON.parse(ctx.query.filters as string) : undefined;
+    } catch (error) {
+        // If the JSON is not valid, tell the user
+        ctx.status = 400;
+        ctx.body = { error: 'Invalid JSON format in filters parameter' };
+        return;
+    }
+
+    // Step 2: Type assertion for filters
+    const filters = parsedFilters as Array<{ from?: number, to?: number }>;
+
+    // Step 3: If no filters, return all books
+    if (!filters) {
+        const books = await adapter.listBooks([]);
+        ctx.body = books;
+        return;
+    }
+
+    // Step 4: Check if the filters are valid
+    if (!validateFilters(filters)) {
+        ctx.status = 400;
+        ctx.body = { 
+            error: 'Invalid price range format. Each filter must have numeric "from" and "to" values, where "from" is less than or equal to "to"'
+        };
+        return;
+    }
+
+    // Step 5: Get and return the filtered books
     try {
         const books = await adapter.listBooks(filters);
         ctx.body = books;
