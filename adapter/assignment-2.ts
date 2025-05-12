@@ -11,8 +11,26 @@ export interface Book {
     image: string,
 };
 
+// In-memory storage for books
+let books: Book[] = [];
+
+// Initialize books array with data from assignment-1
+async function initializeBooks() {
+    books = await assignment1.listBooks();
+}
+initializeBooks();
+
 async function listBooks(filters?: Array<{from?: number, to?: number}>) : Promise<Book[]>{
-    return assignment1.listBooks(filters);
+    if (!filters || filters.length === 0) {
+        return books; // No filters, return all books
+    }
+    console.log("running listBooks")
+    return books.filter(book =>
+        filters.some(filter =>
+            (filter.from === undefined || book.price >= filter.from) &&
+            (filter.to === undefined || book.price <= filter.to)
+        )
+    );
 }
 
 async function createOrUpdateBook(book: Book): Promise<BookID> {
