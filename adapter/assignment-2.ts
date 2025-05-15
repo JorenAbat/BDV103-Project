@@ -1,15 +1,4 @@
-import assignment1 from "./assignment-1";
-
-export type BookID = string;
-
-export interface Book {
-    id?: BookID,
-    name: string,
-    author: string,
-    description: string,
-    price: number,
-    image: string,
-};
+import assignment1, { Book, BookID } from "./assignment-1";
 
 // In-memory storage for books
 let books: Book[] = [];
@@ -17,12 +6,7 @@ let books: Book[] = [];
 // Initialize books array with data from assignment-1
 async function initializeBooks() {
     try {
-        const initialBooks = await assignment1.listBooks();
-        books = initialBooks.map(book => ({
-            ...book,
-            id: Math.random().toString(36).substring(2, 11),
-            price: Number(book.price.toFixed(2)) // Ensure price has 2 decimal places
-        }));
+        books = await assignment1.listBooks();
     } catch (error) {
         console.error('Error initializing books:', error);
         books = [];
@@ -64,7 +48,7 @@ async function createOrUpdateBook(book: Book): Promise<BookID> {
             id: books[existingBookIndex].id
         };
         books[existingBookIndex] = updatedBook;
-        return updatedBook.id!;
+        return updatedBook.id;
     } else {
         // Create new book
         const newBook: Book = {
@@ -72,7 +56,7 @@ async function createOrUpdateBook(book: Book): Promise<BookID> {
             id: Math.random().toString(36).substring(2, 11),
         };
         books.push(newBook);
-        return newBook.id!;
+        return newBook.id;
     }
 }
 
