@@ -1,4 +1,5 @@
-import previous_assignment from './assignment-3.js'
+/* eslint-disable */
+import previous_assignment from './assignment-3'
 
 export type BookID = string
 

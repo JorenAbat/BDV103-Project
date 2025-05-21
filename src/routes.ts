@@ -1,7 +1,7 @@
 import Router from 'koa-router';
 import { Book } from '../adapter/assignment-1.js';
-import { client } from './db/mongodb.js';
-import { Collection, Filter } from 'mongodb';
+import { client } from './db/mongodb';
+import { Collection } from 'mongodb';
 
 const router = new Router();
 const db = client.db('bookstore');
@@ -16,11 +16,11 @@ function isValidBook(book: Book): boolean {
            typeof book.price === 'number';
 }
 
-// Get a list of books, with optional price filters
+// Get a list of books, with optional filters
 router.get('/books', async (ctx) => {
     try {
         // Get filters from the URL if they exist
-        let filters: Array<{ from?: number, to?: number }> | undefined;
+        let filters: Array<{ from?: number, to?: number, name?: string, author?: string }> | undefined;
         if (ctx.query.filters) {
             try {
                 filters = JSON.parse(ctx.query.filters as string);
@@ -31,37 +31,55 @@ router.get('/books', async (ctx) => {
             }
         }
 
-        // If no filters, return all books
-        if (!filters) {
+        // Ensure filters is always an array
+        filters = filters ?? [];
+        // Remove empty filters (no valid fields)
+        filters = filters.filter(f =>
+            f.from !== undefined ||
+            f.to !== undefined ||
+            (typeof f.name === 'string' && f.name.length > 0) ||
+            (typeof f.author === 'string' && f.author.length > 0)
+        );
+        if (filters.length === 0) {
             const allBooks = await booksCollection.find({}).toArray();
             ctx.body = allBooks;
             return;
         }
 
         // Check if the filters are in the correct format
-        if (!Array.isArray(filters) || !filters.every(f => (f.from !== undefined || f.to !== undefined))) {
+        if (!Array.isArray(filters) || !filters.every(f =>
+            f.from !== undefined ||
+            f.to !== undefined ||
+            (typeof f.name === 'string' && f.name.length > 0) ||
+            (typeof f.author === 'string' && f.author.length > 0)
+        )) {
             ctx.status = 400;
-            ctx.body = { error: 'Price filters must include at least one price range' };
+            ctx.body = { error: 'Each filter must include at least one valid field (from, to, name, or author)' };
             return;
         }
 
-        // Create a query to find books within the price ranges
-        const priceQueries = filters.map(filter => {
-            const query: Filter<Book> = {};
+        // Create a query to find books matching any of the filters
+        const filterQueries = filters.map(filter => {
+            // Using 'any' here for simplicity, as MongoDB queries can have dynamic fields
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const query: any = {};
             if (filter.from !== undefined) {
-                query.price = { $gte: filter.from };
+                query.price = { ...query.price, $gte: filter.from };
             }
             if (filter.to !== undefined) {
-                query.price = { 
-                    $gte: filter.from,
-                    $lte: filter.to 
-                };
+                query.price = { ...query.price, $lte: filter.to };
+            }
+            if (filter.name) {
+                query.name = { $regex: filter.name, $options: 'i' }; // case-insensitive
+            }
+            if (filter.author) {
+                query.author = { $regex: filter.author, $options: 'i' };
             }
             return query;
         });
 
         // Get and return the filtered books
-        const filteredBooks = await booksCollection.find({ $or: priceQueries }).toArray();
+        const filteredBooks = await booksCollection.find({ $or: filterQueries }).toArray();
         ctx.body = filteredBooks;
     } catch (error) {
         console.error('Error getting books:', error);

@@ -3,7 +3,6 @@
     "version": "1.0.0",
     "description": "This is a template repository for the first assignment in BVD 103 at McMaster Continuing Education.",
     "main": "index.js",
-    "type": "module",
     "scripts": {
         "start-server": "ts-node src/server.ts",
         "lint": "eslint . --ext .ts",
