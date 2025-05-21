@@ -3,7 +3,7 @@ import previous_assignment from './assignment-2'
 export type BookID = string
 
 export interface Book {
-  id?: BookID
+  id: BookID
   name: string
   author: string
   description: string

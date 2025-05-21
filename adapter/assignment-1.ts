@@ -1,5 +1,3 @@
-import books from './../mcmasteful-book-list.json';
-
 export type BookID = string;
 
 export interface Book {
@@ -11,19 +9,16 @@ export interface Book {
     image: string,
 };
 
-// Add IDs to the imported books
-const booksWithIds = books.map(book => ({
-    ...book,
-    id: Math.random().toString(36).substring(2, 11)
-}));
+// Initialize empty array since we're using a database now
+const booksWithIds: Book[] = [];
 
 // If you have multiple filters, a book matching any of them is a match.
 async function listBooks(filters?: Array<{from?: number, to?: number}>) : Promise<Book[]>{
     if (!filters || filters.length === 0) {
-        return booksWithIds; // Return books with IDs
+        return booksWithIds;
     }
     console.log("running listBooks")
-    return booksWithIds.filter(book =>
+    return booksWithIds.filter((book: Book) =>
         filters.some(filter =>
             (filter.from === undefined || book.price >= filter.from) &&
             (filter.to === undefined || book.price <= filter.to)

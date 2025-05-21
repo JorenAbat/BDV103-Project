@@ -40,7 +40,7 @@ async function createOrUpdateBook(book: Book): Promise<BookID> {
     try {
         // Check if the book has all the required information
         if (!book.name || !book.author || typeof book.price !== 'number') {
-            throw new Error('Book must have a name, author, and price');
+            throw new Error('book must have a name, author, and price');
         }
         
         // Send the book to the server
