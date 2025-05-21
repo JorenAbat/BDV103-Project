@@ -8,10 +8,6 @@ import { MongoClient } from 'mongodb';
 // - port: 27017 (default MongoDB port)
 const url = 'mongodb://root:example@mongo:27017';
 
-// The name of our database
-// This is where all our book data will be stored
-const dbName = 'bookstore';
-
 // Create a new MongoDB client
 // This client will be used to connect to our database
 const client = new MongoClient(url);

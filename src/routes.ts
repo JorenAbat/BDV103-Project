@@ -1,14 +1,14 @@
 import Router from 'koa-router';
-import { Book } from '../adapter/assignment-1';
-import { client } from './db/mongodb';
-import { Collection } from 'mongodb';
+import { Book } from '../adapter/assignment-1.js';
+import { client } from './db/mongodb.js';
+import { Collection, Filter } from 'mongodb';
 
 const router = new Router();
 const db = client.db('bookstore');
 const booksCollection: Collection<Book> = db.collection<Book>('books');
 
 // Check if a book has all the required information
-function isValidBook(book: any): boolean {
+function isValidBook(book: Book): boolean {
     // A book is valid if it has a name, author, and price
     return book && 
            typeof book.name === 'string' && 
@@ -47,12 +47,15 @@ router.get('/books', async (ctx) => {
 
         // Create a query to find books within the price ranges
         const priceQueries = filters.map(filter => {
-            const query: any = {};
+            const query: Filter<Book> = {};
             if (filter.from !== undefined) {
                 query.price = { $gte: filter.from };
             }
             if (filter.to !== undefined) {
-                query.price = { ...query.price, $lte: filter.to };
+                query.price = { 
+                    $gte: filter.from,
+                    $lte: filter.to 
+                };
             }
             return query;
         });
@@ -71,7 +74,7 @@ router.get('/books', async (ctx) => {
 router.post('/books', async (ctx) => {
     try {
         // Get the book data from the request
-        const bookData = ctx.request.body as any;
+        const bookData = ctx.request.body as Book;
 
         // Check if the book data is valid
         if (!isValidBook(bookData)) {

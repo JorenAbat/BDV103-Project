@@ -2,9 +2,9 @@
 import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import qs from 'koa-qs';
-import routes from './routes';
-import { connectToMongo, closeMongoConnection } from './db/mongodb';
-const cors = require('@koa/cors');
+import routes from './routes.js';
+import { connectToMongo, closeMongoConnection } from './db/mongodb.js';
+import cors from '@koa/cors';
 
 // Create a new Koa application
 const app = new Koa();
