@@ -1,6 +1,6 @@
 import Router from 'koa-router';
 import { Book } from '../adapter/assignment-1.js';
-import { client } from './db/mongodb';
+import { client } from './db/mongodb.js';
 import { Collection } from 'mongodb';
 
 const router = new Router();
