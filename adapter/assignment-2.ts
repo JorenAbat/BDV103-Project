@@ -1,4 +1,4 @@
-import { Book, BookID } from "./assignment-1";
+import { Book, BookID } from "./assignment-1.js";
 const assignment = "assignment-2";
 const API_BASE_URL = 'http://localhost:3000';
 

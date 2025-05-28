@@ -1,3 +1,3 @@
-import assignment from "./assignment-3";
+import assignment from "./assignment-3.js";
 
 export default assignment;
