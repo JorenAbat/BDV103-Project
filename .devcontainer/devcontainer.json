@@ -6,9 +6,9 @@
 	"dockerComposeFile": ["docker-compose.yml"],
 	"service": "dev",
 	"features": {
-		"ghcr.io/devcontainers-contrib/features/tsx:1": {},
-		"ghcr.io/mcmastercce/bvd-103-mcmasterful-books/mcmasterful-books:latest": {}
+	"ghcr.io/mcmastercce/bvd-103-mcmasterful-books/mcmasterful-books:0.1.5": {}
 	},
+	"workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
