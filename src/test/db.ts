@@ -1,5 +1,10 @@
 import { MongoClient, Db, Collection } from 'mongodb';
 
+declare global {
+  // eslint-disable-next-line no-var
+  var MONGO_URI: string;
+}
+
 export interface Book {
   _id?: string;
   title: string;
@@ -9,23 +14,17 @@ export interface Book {
   quantity: number;
 }
 
-const uri = (global as any).MONGO_URI as string ?? 'mongodb://mongo';
-
-export const client = new MongoClient(uri);
-
 export interface BookDatabaseAccessor {
+  client: MongoClient;
   database: Db;
   books: Collection<Book>;
 }
 
 export function getBookDatabase(): BookDatabaseAccessor {
-  // If we aren't testing, we are creating a random database name
-  const database = client.db((global as any).MONGO_URI !== undefined ? Math.floor(Math.random() * 100000).toPrecision() : 'database-name');
-  
+  // Now the URI will be set because setup() has run
+  const uri = global.MONGO_URI;
+  const client = new MongoClient(uri);
+  const database = client.db(Math.floor(Math.random() * 100000).toPrecision());
   const books = database.collection<Book>('books');
-
-  return {
-    database,
-    books
-  };
+  return { client, database, books };
 } 
