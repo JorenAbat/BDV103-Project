@@ -16,6 +16,26 @@ function isValidBook(book: Book): boolean {
            typeof book.price === 'number';
 }
 
+// Get a single book by ID
+router.get('/books/:id', async (ctx) => {
+    try {
+        const bookId = ctx.params.id;
+        const book = await booksCollection.findOne({ id: bookId });
+        
+        if (!book) {
+            ctx.status = 404;
+            ctx.body = { error: `Could not find a book with ID ${bookId}` };
+            return;
+        }
+
+        ctx.body = book;
+    } catch (error) {
+        console.error('Error getting book:', error);
+        ctx.status = 500;
+        ctx.body = { error: 'Could not get the book. Please try again.' };
+    }
+});
+
 // Get a list of books, with optional filters
 router.get('/books', async (ctx) => {
     try {
