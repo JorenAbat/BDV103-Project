@@ -17,8 +17,7 @@ describe('Integration Tests', () => {
     });
 
     beforeEach(async () => {
-        const { database } = getBookDatabase();
-        await database.dropDatabase();
+        await fetch(`${API_BASE_URL}/test/clear-db`, { method: 'POST' });
     });
 
     describe('Warehouse API', () => {

@@ -188,5 +188,16 @@ router.delete('/books/:id', async (ctx) => {
     }
 });
 
+// Test-only route to clear the database
+router.post('/test/clear-db', async (ctx) => {
+  const db = client.db('bookstore');
+  const collections = await db.collections();
+  for (const collection of collections) {
+    await collection.deleteMany({});
+  }
+  ctx.status = 200;
+  ctx.body = { message: 'Database cleared' };
+});
+
 // Make the router available to other files
 export default router;

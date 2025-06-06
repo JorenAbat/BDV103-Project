@@ -26,18 +26,22 @@ export class MongoWarehouse implements Warehouse {
 
     // Add books to a specific shelf
     async addBookToShelf(bookId: string, shelfId: string, quantity: number): Promise<void> {
+        console.log(`Adding ${quantity} books to shelf ${shelfId} for book ${bookId}`);
         if (quantity <= 0) {
             throw new Error('Quantity must be greater than zero');
         }
 
         // Use MongoDB's updateOne with upsert to either update existing document or create new one
         const doc = await this.collection.findOne({ bookId });
+        console.log(`Current document for book ${bookId}: ${JSON.stringify(doc)}`);
         let locations = doc?.locations || [];
         const existingLocation = locations.find(loc => loc.shelfId === shelfId);
         if (existingLocation) {
             existingLocation.quantity += quantity;
+            console.log(`Updated quantity for book ${bookId} on shelf ${shelfId}: ${existingLocation.quantity}`);
         } else {
             locations.push({ shelfId, quantity });
+            console.log(`Added new location for book ${bookId} on shelf ${shelfId} with quantity ${quantity}`);
         }
 
         // Remove any duplicate locations for the same shelf
@@ -55,6 +59,7 @@ export class MongoWarehouse implements Warehouse {
             },
             { upsert: true }
         );
+        console.log(`Updated document for book ${bookId}: ${JSON.stringify(await this.collection.findOne({ bookId }))}`);
     }
 
     // Remove books from a specific shelf
@@ -79,6 +84,7 @@ export class MongoWarehouse implements Warehouse {
 
         // Update the quantity
         location.quantity -= quantity;
+        console.log(`Removed quantity for book ${bookId} on shelf ${shelfId}: ${location.quantity}`);
 
         // Remove locations with zero quantity
         const updatedLocations = doc.locations
@@ -88,15 +94,14 @@ export class MongoWarehouse implements Warehouse {
         if (updatedLocations.length === 0) {
             // If no locations left, remove the document
             await this.collection.deleteOne({ bookId });
+            console.log(`Removed document for book ${bookId} as no locations left`);
         } else {
             // Otherwise update with new locations
-            const result = await this.collection.updateOne(
+            await this.collection.updateOne(
                 { bookId },
                 { $set: { locations: updatedLocations } }
             );
-            if (!result.acknowledged) {
-                throw new Error('Failed to update book quantity');
-            }
+            console.log(`Updated locations for book ${bookId}: ${JSON.stringify(updatedLocations)}`);
         }
     }
 
