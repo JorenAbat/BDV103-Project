@@ -1,10 +1,12 @@
-// Represents a location where books are stored in the warehouse
+// A location where books are stored in the warehouse
 export interface BookLocation {
-    shelfId: string;    // The ID of the shelf where books are stored
-    quantity: number;   // How many books are on this shelf
+    // The ID of the shelf where books are stored
+    shelfId: string;
+    // How many books are on this shelf
+    quantity: number;
 }
 
-// The main warehouse interface that defines all warehouse operations
+// Interface for managing the warehouse
 export interface Warehouse {
     // Get all locations where a specific book is stored
     getBookLocations(bookId: string): Promise<BookLocation[]>;

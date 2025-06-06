@@ -1,34 +1,38 @@
-// A unique identifier for an order
-export type OrderId = string;
-
-// Represents a single book in an order
+// A book in an order
 export interface OrderItem {
-    bookId: string;     // The ID of the book being ordered
-    quantity: number;   // How many copies of the book are ordered
+    // The ID of the book being ordered
+    bookId: string;
+    // How many copies of the book are ordered
+    quantity: number;
 }
 
-// Represents a complete order in the system
+// A complete order in our system
 export interface Order {
-    id: OrderId;                    // Unique order identifier
-    items: OrderItem[];            // List of books in the order
-    status: 'pending' | 'fulfilled' | 'cancelled';  // Current status of the order
-    createdAt: Date;               // When the order was created
-    fulfilledAt?: Date;            // When the order was fulfilled (if it has been)
+    // Unique order identifier
+    id: string;
+    // List of books in the order
+    items: OrderItem[];
+    // Current status of the order
+    status: 'pending' | 'fulfilled' | 'cancelled';
+    // When the order was created
+    createdAt: Date;
+    // When the order was fulfilled (if it has been)
+    fulfilledAt?: Date;
 }
 
-// Interface for managing orders in the system
+// Interface for managing orders in our system
 export interface OrderRepository {
-    // Create a new order with the given items
+    // Create a new order
     createOrder(items: OrderItem[]): Promise<Order>;
     
     // Get a specific order by its ID
-    getOrder(id: OrderId): Promise<Order | null>;
+    getOrder(id: string): Promise<Order | null>;
     
     // Get all orders in the system
     getAllOrders(): Promise<Order[]>;
     
-    // Update the status of an order
-    updateOrderStatus(id: OrderId, status: Order['status']): Promise<void>;
+    // Update an order's status
+    updateOrderStatus(id: string, status: Order['status']): Promise<void>;
     
     // Fulfill an order (mark as fulfilled and update inventory)
     fulfillOrder(orderId: string): Promise<Order>;
