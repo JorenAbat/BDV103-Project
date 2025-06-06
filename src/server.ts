@@ -3,7 +3,7 @@ import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import qs from 'koa-qs';
 import routes from './routes.js';
-import { connectToMongo, closeMongoConnection } from './db/mongodb.js';
+import { connectToMongo, closeMongoConnection, client } from './db/mongodb.js';
 import cors from '@koa/cors';
 import { createWarehouseRouter } from './routes/warehouse.js';
 import { createOrderRouter } from './routes/orders.js';
@@ -35,8 +35,8 @@ app.use(bodyParser({
 }));
 
 // Create our MongoDB-based warehouse and order systems
-const warehouse = new MongoWarehouse();
-const orderSystem = new MongoOrderProcessor(warehouse);
+const warehouse = new MongoWarehouse(client, 'bookstore');
+const orderSystem = new MongoOrderProcessor(client, 'bookstore', warehouse);
 
 // Set up our routes
 // This connects our API endpoints to the server
