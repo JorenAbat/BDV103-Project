@@ -7,8 +7,8 @@ import { connectToMongo, closeMongoConnection } from './db/mongodb.js';
 import cors from '@koa/cors';
 import { createWarehouseRouter } from './routes/warehouse.js';
 import { createOrderRouter } from './routes/orders.js';
-import { InMemoryWarehouse } from './domains/warehouse/in-memory-adapter.js';
-import { InMemoryOrderProcessor } from './domains/orders/in-memory-adapter.js';
+import { MongoOrderProcessor } from './domains/orders/mongodb-adapter.js';
+import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
 
 // Create a new Koa application
 const app = new Koa();
@@ -34,9 +34,9 @@ app.use(bodyParser({
     jsonLimit: '1mb'  // Limit JSON size to 1MB
 }));
 
-// Create our in-memory systems
-const warehouse = new InMemoryWarehouse();
-const orderSystem = new InMemoryOrderProcessor(warehouse);
+// Create our MongoDB-based warehouse and order systems
+const warehouse = new MongoWarehouse();
+const orderSystem = new MongoOrderProcessor(warehouse);
 
 // Set up our routes
 // This connects our API endpoints to the server

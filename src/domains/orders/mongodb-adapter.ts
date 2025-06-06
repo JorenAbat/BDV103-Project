@@ -1,18 +1,23 @@
+import { Collection } from 'mongodb';
 import { Order, OrderItem, OrderRepository } from './domain.js';
+import { client } from '../../db/mongodb.js';
 import { Warehouse } from '../warehouse/domain.js';
 
-// This class implements the order processing system using in-memory storage
-// It handles creating, managing, and fulfilling orders
-export class InMemoryOrderProcessor implements OrderRepository {
-    // Store orders in memory
-    private orders: Map<string, Order> = new Map();
-    
-    // Keep track of the next order ID to use
-    private nextOrderId = 1;
+// MongoDB collection name for orders
+const COLLECTION_NAME = 'orders';
 
-    constructor(private warehouse: Warehouse) {}
+// Interface for the MongoDB document structure
+interface OrderDocument extends Order {
+    _id?: string;
+}
 
-    // Create a new order
+export class MongoOrderProcessor implements OrderRepository {
+    private collection: Collection<OrderDocument>;
+
+    constructor(private warehouse: Warehouse) {
+        this.collection = client.db().collection<OrderDocument>(COLLECTION_NAME);
+    }
+
     async createOrder(items: OrderItem[]): Promise<Order> {
         // Check if all quantities are valid
         for (const item of items) {
@@ -27,34 +32,31 @@ export class InMemoryOrderProcessor implements OrderRepository {
             const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
             
             if (totalStock < item.quantity) {
-                throw new Error('Not enough books available');
+                throw new Error(`Not enough books available for book ${item.bookId}`);
             }
         }
 
         // Create the new order
-        const order: Order = {
-            id: `ORD-${this.nextOrderId++}`,
+        const order: OrderDocument = {
+            id: `ORD-${Date.now()}`,
             items,
             status: 'pending',
             createdAt: new Date()
         };
 
-        // Save the order
-        this.orders.set(order.id, order);
+        // Save the order to MongoDB
+        await this.collection.insertOne(order);
         return order;
     }
 
-    // Get a specific order by ID
     async getOrder(orderId: string): Promise<Order | null> {
-        return this.orders.get(orderId) || null;
+        return this.collection.findOne({ id: orderId });
     }
 
-    // Get all orders
     async getAllOrders(): Promise<Order[]> {
-        return Array.from(this.orders.values());
+        return this.collection.find().toArray();
     }
 
-    // Update an order's status
     async updateOrderStatus(id: string, status: Order['status']): Promise<void> {
         const order = await this.getOrder(id);
         if (!order) {
@@ -66,16 +68,20 @@ export class InMemoryOrderProcessor implements OrderRepository {
             throw new Error('Order is already fulfilled');
         }
 
-        // Update the status
-        order.status = status;
+        // Update the status in MongoDB
+        const update: Partial<Order> = { status };
         
         // If order is fulfilled, record the fulfillment time
         if (status === 'fulfilled') {
-            order.fulfilledAt = new Date();
+            update.fulfilledAt = new Date();
         }
+
+        await this.collection.updateOne(
+            { id },
+            { $set: update }
+        );
     }
 
-    // Fulfill an order (remove books from warehouse and mark as fulfilled)
     async fulfillOrder(orderId: string): Promise<Order> {
         // Get the order
         const order = await this.getOrder(orderId);
@@ -84,9 +90,6 @@ export class InMemoryOrderProcessor implements OrderRepository {
         }
 
         // Check if order can be fulfilled
-        if (order.status === 'fulfilled') {
-            throw new Error('Order is already fulfilled');
-        }
         if (order.status !== 'pending') {
             throw new Error('Order is not in pending status');
         }
@@ -116,11 +119,18 @@ export class InMemoryOrderProcessor implements OrderRepository {
             }
         }
 
-        // Mark order as fulfilled
-        order.status = 'fulfilled';
-        order.fulfilledAt = new Date();
-        this.orders.set(order.id, order);
+        // Update order status in MongoDB
+        const updatedOrder: Order = {
+            ...order,
+            status: 'fulfilled',
+            fulfilledAt: new Date()
+        };
 
-        return order;
+        await this.collection.updateOne(
+            { id: orderId },
+            { $set: updatedOrder }
+        );
+
+        return updatedOrder;
     }
 } 

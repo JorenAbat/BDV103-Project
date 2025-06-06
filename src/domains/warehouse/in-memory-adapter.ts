@@ -52,12 +52,12 @@ export class InMemoryWarehouse implements Warehouse {
 
         // Check if book exists on this shelf
         if (!location) {
-            throw new Error('Book not found on this shelf');
+            throw new Error('Book not found on shelf');
         }
 
         // Check if we have enough books
         if (location.quantity < quantity) {
-            throw new Error('Not enough books available on this shelf');
+            throw new Error('Not enough books available');
         }
 
         // Remove books
