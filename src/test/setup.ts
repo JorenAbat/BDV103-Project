@@ -1,4 +1,5 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { client } from '../db/mongodb.js';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -21,6 +22,10 @@ export async function setup() {
 
 export async function teardown() {
   if (global.__MONGOINSTANCE) {
+    // Drop the entire database to ensure a clean state
+    const db = client.db();
+    await db.dropDatabase();
+    
     await global.__MONGOINSTANCE.stop();
   }
 } 

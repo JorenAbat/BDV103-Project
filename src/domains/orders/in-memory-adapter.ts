@@ -84,9 +84,6 @@ export class InMemoryOrderProcessor implements OrderRepository {
         }
 
         // Check if order can be fulfilled
-        if (order.status === 'fulfilled') {
-            throw new Error('Order is already fulfilled');
-        }
         if (order.status !== 'pending') {
             throw new Error('Order is not in pending status');
         }

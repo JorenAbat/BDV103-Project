@@ -36,9 +36,18 @@ export function createOrderRouter(orderSystem: OrderRepository) {
                 }
             }
 
-            const order = await orderSystem.createOrder(items);
-            ctx.status = 201;
-            ctx.body = order;
+            try {
+                const order = await orderSystem.createOrder(items);
+                ctx.status = 201;
+                ctx.body = order;
+            } catch (error) {
+                if (error instanceof Error && error.message === 'Not enough books available') {
+                    ctx.status = 400;
+                    ctx.body = { error: error.message };
+                } else {
+                    throw error;
+                }
+            }
         } catch (error) {
             console.error('Error creating order:', error);
             ctx.status = 500;
@@ -70,18 +79,29 @@ export function createOrderRouter(orderSystem: OrderRepository) {
     router.post('/orders/:orderId/fulfill', async (ctx) => {
         try {
             const { orderId } = ctx.params;
-            await orderSystem.fulfillOrder(orderId);
+            const order = await orderSystem.getOrder(orderId);
+            
+            if (!order) {
+                ctx.status = 404;
+                ctx.body = { error: 'Order not found' };
+                return;
+            }
+
+            const fulfilledOrder = await orderSystem.fulfillOrder(orderId);
             ctx.status = 200;
-            ctx.body = { message: 'Order fulfilled successfully' };
+            ctx.body = fulfilledOrder;
         } catch (error) {
             console.error('Error fulfilling order:', error);
             if (error instanceof Error) {
                 if (error.message === 'Order not found') {
                     ctx.status = 404;
                     ctx.body = { error: 'Order not found' };
-                } else if (error.message === 'Order already fulfilled') {
+                } else if (error.message === 'Order is not in pending status') {
                     ctx.status = 400;
-                    ctx.body = { error: 'Order already fulfilled' };
+                    ctx.body = { error: 'Order is not in pending status' };
+                } else if (error.message === 'Not enough books available') {
+                    ctx.status = 400;
+                    ctx.body = { error: 'Not enough books available' };
                 } else {
                     ctx.status = 500;
                     ctx.body = { error: 'Could not fulfill order' };

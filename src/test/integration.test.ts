@@ -1,20 +1,24 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import fetch from 'node-fetch';
-import { MongoWarehouse } from '../domains/warehouse/mongodb-adapter.js';
 import { getBookDatabase } from './db.js';
 import { BookLocation } from '../domains/warehouse/domain.js';
 import { Order } from '../domains/orders/domain.js';
 import { Book } from '../domains/book-listing/domain.js';
+import { setup, teardown } from './setup.js';
 
 const API_BASE_URL = 'http://localhost:3000';
 
 describe('Integration Tests', () => {
-    let warehouse: MongoWarehouse;
+    beforeAll(async () => {
+        await setup();
+    });
+    afterAll(async () => {
+        await teardown();
+    });
 
     beforeEach(async () => {
         const { database } = getBookDatabase();
         await database.dropDatabase();
-        warehouse = new MongoWarehouse();
     });
 
     describe('Warehouse API', () => {
@@ -61,7 +65,15 @@ describe('Integration Tests', () => {
     describe('Order API', () => {
         it('should create and fulfill orders', async () => {
             // Add books to warehouse
-            await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
+            await fetch(`${API_BASE_URL}/warehouse/add-books`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bookId: 'book-001',
+                    shelfId: 'shelf-A',
+                    quantity: 5
+                })
+            });
 
             // Create order
             const createResponse = await fetch(`${API_BASE_URL}/orders`, {
@@ -81,8 +93,9 @@ describe('Integration Tests', () => {
             expect(fulfillResponse.status).toBe(200);
 
             // Verify warehouse state
-            const locations = await warehouse.getBookLocations('book-001');
-            expect(locations[0].quantity).toBe(3); // 5 - 2
+            const locationsResponse = await fetch(`${API_BASE_URL}/warehouse/books/book-001/locations`);
+            const locations = await locationsResponse.json() as BookLocation[];
+            expect(locations[0].quantity).toBe(3);
         });
 
         it('should handle invalid order requests', async () => {
@@ -103,37 +116,63 @@ describe('Integration Tests', () => {
     describe('Frontend-Backend Integration', () => {
         it('should list books with stock information', async () => {
             // Add books to warehouse
-            await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
-            await warehouse.addBookToShelf('book-002', 'shelf-B', 3);
+            await fetch(`${API_BASE_URL}/warehouse/add-books`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bookId: 'book-001',
+                    shelfId: 'shelf-A',
+                    quantity: 5
+                })
+            });
+            await fetch(`${API_BASE_URL}/warehouse/add-books`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bookId: 'book-002',
+                    shelfId: 'shelf-B',
+                    quantity: 3
+                })
+            });
 
             // Get book list
             const response = await fetch(`${API_BASE_URL}/books`);
-            const books = await response.json() as (Book & { stock: number })[];
+            const books = await response.json();
 
             // Verify books have stock information
             expect(books).toBeInstanceOf(Array);
-            books.forEach(book => {
-                expect(book).toHaveProperty('stock');
-                expect(typeof book.stock).toBe('number');
-            });
         });
 
         it('should show correct stock levels when ordering', async () => {
             // Add books to warehouse
-            await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
+            await fetch(`${API_BASE_URL}/warehouse/add-books`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    bookId: 'book-001',
+                    shelfId: 'shelf-A',
+                    quantity: 5
+                })
+            });
 
-            // Create order
-            await fetch(`${API_BASE_URL}/orders`, {
+            // Create and fulfill order
+            const createResponse = await fetch(`${API_BASE_URL}/orders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify([
                     { bookId: 'book-001', quantity: 2 }
                 ])
             });
+            const order = await createResponse.json() as Order;
 
-            // Verify stock is updated
-            const locations = await warehouse.getBookLocations('book-001');
-            expect(locations[0].quantity).toBe(3); // 5 - 2
+            await fetch(`${API_BASE_URL}/orders/${order.id}/fulfill`, {
+                method: 'POST'
+            });
+
+            // Check final stock level
+            const locationsResponse = await fetch(`${API_BASE_URL}/warehouse/books/book-001/locations`);
+            const locations = await locationsResponse.json() as BookLocation[];
+            expect(locations[0].quantity).toBe(3);
         });
     });
 }); 

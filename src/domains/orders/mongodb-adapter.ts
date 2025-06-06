@@ -1,6 +1,5 @@
-import { Collection } from 'mongodb';
+import { Collection, MongoClient } from 'mongodb';
 import { Order, OrderItem, OrderRepository } from './domain.js';
-import { client } from '../../db/mongodb.js';
 import { Warehouse } from '../warehouse/domain.js';
 
 // MongoDB collection name for orders
@@ -14,8 +13,8 @@ interface OrderDocument extends Order {
 export class MongoOrderProcessor implements OrderRepository {
     private collection: Collection<OrderDocument>;
 
-    constructor(private warehouse: Warehouse) {
-        this.collection = client.db().collection<OrderDocument>(COLLECTION_NAME);
+    constructor(client: MongoClient, dbName: string, private warehouse: Warehouse) {
+        this.collection = client.db(dbName).collection<OrderDocument>(COLLECTION_NAME);
     }
 
     async createOrder(items: OrderItem[]): Promise<Order> {
@@ -32,7 +31,7 @@ export class MongoOrderProcessor implements OrderRepository {
             const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
             
             if (totalStock < item.quantity) {
-                throw new Error(`Not enough books available for book ${item.bookId}`);
+                throw new Error('Not enough books available');
             }
         }
 
@@ -44,9 +43,17 @@ export class MongoOrderProcessor implements OrderRepository {
             createdAt: new Date()
         };
 
-        // Save the order to MongoDB
-        await this.collection.insertOne(order);
-        return order;
+        try {
+            // Save the order to MongoDB
+            const result = await this.collection.insertOne(order);
+            if (!result.acknowledged) {
+                throw new Error('Failed to create order');
+            }
+            return order;
+        } catch (error) {
+            console.error('Error saving order to MongoDB:', error);
+            throw new Error('Failed to create order');
+        }
     }
 
     async getOrder(orderId: string): Promise<Order | null> {
@@ -94,43 +101,55 @@ export class MongoOrderProcessor implements OrderRepository {
             throw new Error('Order is not in pending status');
         }
 
-        // Try to remove books from warehouse
+        // Verify stock availability before making any changes
         for (const item of order.items) {
             const locations = await this.warehouse.getBookLocations(item.bookId);
-            let remainingQuantity = item.quantity;
-
-            // Try to remove books from each location until we have enough
-            for (const location of locations) {
-                if (remainingQuantity <= 0) break;
-
-                const quantityToRemove = Math.min(remainingQuantity, location.quantity);
-                try {
-                    await this.warehouse.removeBookFromShelf(item.bookId, location.shelfId, quantityToRemove);
-                    remainingQuantity -= quantityToRemove;
-                } catch {
-                    // If we can't remove from this shelf, try the next one
-                    continue;
-                }
-            }
-
-            // If we couldn't get enough books, throw an error
-            if (remainingQuantity > 0) {
-                throw new Error('Not enough books available to fulfill order');
+            const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
+            
+            if (totalStock < item.quantity) {
+                throw new Error('Not enough books available');
             }
         }
 
-        // Update order status in MongoDB
-        const updatedOrder: Order = {
-            ...order,
-            status: 'fulfilled',
-            fulfilledAt: new Date()
-        };
+        // Try to remove books from warehouse
+        try {
+            for (const item of order.items) {
+                const locations = await this.warehouse.getBookLocations(item.bookId);
+                let remainingQuantity = item.quantity;
 
-        await this.collection.updateOne(
-            { id: orderId },
-            { $set: updatedOrder }
-        );
+                for (const location of locations) {
+                    if (remainingQuantity <= 0) break;
+                    
+                    const quantityToRemove = Math.min(location.quantity, remainingQuantity);
+                    await this.warehouse.removeBookFromShelf(item.bookId, location.shelfId, quantityToRemove);
+                    remainingQuantity -= quantityToRemove;
+                }
 
-        return updatedOrder;
+                if (remainingQuantity > 0) {
+                    throw new Error('Failed to remove all required books');
+                }
+            }
+
+            // Update order status in MongoDB
+            const updatedOrder: Order = {
+                ...order,
+                status: 'fulfilled',
+                fulfilledAt: new Date()
+            };
+
+            const result = await this.collection.updateOne(
+                { id: orderId },
+                { $set: updatedOrder }
+            );
+
+            if (!result.acknowledged) {
+                throw new Error('Failed to update order status');
+            }
+
+            return updatedOrder;
+        } catch (error) {
+            console.error('Error fulfilling order:', error);
+            throw error;
+        }
     }
 } 

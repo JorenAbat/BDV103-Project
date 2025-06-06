@@ -1,6 +1,5 @@
-import { Collection } from 'mongodb';
+import { Collection, MongoClient } from 'mongodb';
 import { BookLocation, Warehouse } from './domain.js';
-import { client } from '../../db/mongodb.js';
 
 // MongoDB collection name for warehouse data
 const COLLECTION_NAME = 'warehouse';
@@ -14,9 +13,9 @@ interface WarehouseDocument {
 export class MongoWarehouse implements Warehouse {
     private collection: Collection<WarehouseDocument>;
 
-    constructor() {
+    constructor(client: MongoClient, dbName: string) {
         // Get the warehouse collection from MongoDB
-        this.collection = client.db().collection<WarehouseDocument>(COLLECTION_NAME);
+        this.collection = client.db(dbName).collection<WarehouseDocument>(COLLECTION_NAME);
     }
 
     // Get all locations where a specific book is stored
@@ -32,12 +31,26 @@ export class MongoWarehouse implements Warehouse {
         }
 
         // Use MongoDB's updateOne with upsert to either update existing document or create new one
+        const doc = await this.collection.findOne({ bookId });
+        let locations = doc?.locations || [];
+        const existingLocation = locations.find(loc => loc.shelfId === shelfId);
+        if (existingLocation) {
+            existingLocation.quantity += quantity;
+        } else {
+            locations.push({ shelfId, quantity });
+        }
+
+        // Remove any duplicate locations for the same shelf
+        locations = locations.filter((loc, index, self) => 
+            index === self.findIndex(l => l.shelfId === loc.shelfId)
+        );
+
         await this.collection.updateOne(
             { bookId },
             {
                 $set: {
                     bookId,
-                    locations: await this.updateBookLocations(bookId, shelfId, quantity)
+                    locations
                 }
             },
             { upsert: true }
@@ -52,31 +65,38 @@ export class MongoWarehouse implements Warehouse {
 
         const doc = await this.collection.findOne({ bookId });
         if (!doc) {
-            throw new Error('Book not found in warehouse');
+            throw new Error('Book not found on shelf');
         }
 
         const location = doc.locations.find(loc => loc.shelfId === shelfId);
         if (!location) {
-            throw new Error('Book not found on this shelf');
+            throw new Error('Book not found on shelf');
         }
 
         if (location.quantity < quantity) {
-            throw new Error('Not enough books available on this shelf');
+            throw new Error('Not enough books available');
         }
 
-        // Update the quantity or remove the location if empty
+        // Update the quantity
         location.quantity -= quantity;
-        const updatedLocations = doc.locations.filter(loc => loc.quantity > 0);
+
+        // Remove locations with zero quantity
+        const updatedLocations = doc.locations
+            .map(loc => loc.shelfId === shelfId ? { ...loc, quantity: location.quantity } : loc)
+            .filter(loc => loc.quantity > 0);
 
         if (updatedLocations.length === 0) {
             // If no locations left, remove the document
             await this.collection.deleteOne({ bookId });
         } else {
             // Otherwise update with new locations
-            await this.collection.updateOne(
+            const result = await this.collection.updateOne(
                 { bookId },
                 { $set: { locations: updatedLocations } }
             );
+            if (!result.acknowledged) {
+                throw new Error('Failed to update book quantity');
+            }
         }
     }
 
@@ -86,23 +106,28 @@ export class MongoWarehouse implements Warehouse {
             'locations.shelfId': shelfId
         }).toArray();
 
-        return docs.flatMap(doc => {
+        return docs.map(doc => {
             const location = doc.locations.find(loc => loc.shelfId === shelfId);
-            return location ? [{ bookId: doc.bookId, quantity: location.quantity }] : [];
+            return { bookId: doc.bookId, quantity: location?.quantity || 0 };
         });
     }
 
     // Helper method to update book locations
     private async updateBookLocations(bookId: string, shelfId: string, quantity: number): Promise<BookLocation[]> {
         const doc = await this.collection.findOne({ bookId });
-        const locations = doc?.locations || [];
+        let locations = doc?.locations || [];
         
         const existingLocation = locations.find(loc => loc.shelfId === shelfId);
         if (existingLocation) {
-            existingLocation.quantity += quantity;
+            existingLocation.quantity = quantity; // Set the quantity instead of adding
         } else {
             locations.push({ shelfId, quantity });
         }
+
+        // Remove any duplicate locations for the same shelf
+        locations = locations.filter((loc, index, self) => 
+            index === self.findIndex(l => l.shelfId === loc.shelfId)
+        );
 
         return locations;
     }
