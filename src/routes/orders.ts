@@ -1,14 +1,13 @@
 import Router from 'koa-router';
-import { BookID } from '../../adapter/assignment-4.js';
-import { OrderPort } from '../types/warehouse.js';
+import { OrderRepository } from '../domains/orders/domain.js';
 
-export function createOrderRouter(orderSystem: OrderPort) {
+export function createOrderRouter(orderSystem: OrderRepository) {
     const router = new Router();
 
     // Get all orders
     router.get('/orders', async (ctx) => {
         try {
-            const orders = await orderSystem.listOrders();
+            const orders = await orderSystem.getAllOrders();
             ctx.body = orders;
         } catch (error) {
             console.error('Error getting orders:', error);
@@ -20,7 +19,7 @@ export function createOrderRouter(orderSystem: OrderPort) {
     // Create a new order
     router.post('/orders', async (ctx) => {
         try {
-            const items = ctx.request.body as Array<{ bookId: BookID; quantity: number }>;
+            const items = ctx.request.body as Array<{ bookId: string; quantity: number }>;
             
             if (!Array.isArray(items) || items.length === 0) {
                 ctx.status = 400;
@@ -37,9 +36,9 @@ export function createOrderRouter(orderSystem: OrderPort) {
                 }
             }
 
-            const orderId = await orderSystem.createOrder(items);
+            const order = await orderSystem.createOrder(items);
             ctx.status = 201;
-            ctx.body = { orderId };
+            ctx.body = order;
         } catch (error) {
             console.error('Error creating order:', error);
             ctx.status = 500;
@@ -71,28 +70,7 @@ export function createOrderRouter(orderSystem: OrderPort) {
     router.post('/orders/:orderId/fulfill', async (ctx) => {
         try {
             const { orderId } = ctx.params;
-            const fulfilledItems = ctx.request.body as Array<{
-                bookId: BookID;
-                shelfId: string;
-                quantity: number;
-            }>;
-
-            if (!Array.isArray(fulfilledItems) || fulfilledItems.length === 0) {
-                ctx.status = 400;
-                ctx.body = { error: 'Invalid request. Need an array of fulfilled items' };
-                return;
-            }
-
-            // Validate each fulfilled item
-            for (const item of fulfilledItems) {
-                if (!item.bookId || !item.shelfId || typeof item.quantity !== 'number' || item.quantity <= 0) {
-                    ctx.status = 400;
-                    ctx.body = { error: 'Each item must have a bookId, shelfId, and positive quantity' };
-                    return;
-                }
-            }
-
-            await orderSystem.fulfillOrder(orderId, fulfilledItems);
+            await orderSystem.fulfillOrder(orderId);
             ctx.status = 200;
             ctx.body = { message: 'Order fulfilled successfully' };
         } catch (error) {

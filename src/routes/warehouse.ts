@@ -1,14 +1,13 @@
 import Router from 'koa-router';
-import { BookID } from '../../adapter/assignment-4.js';
-import { WarehousePort } from '../types/warehouse.js';
+import { Warehouse } from '../domains/warehouse/domain.js';
 
-export function createWarehouseRouter(warehouse: WarehousePort) {
+export function createWarehouseRouter(warehouse: Warehouse) {
     const router = new Router();
 
     // Get all books in the warehouse
     router.get('/warehouse/inventory', async (ctx) => {
         try {
-            const shelves = await warehouse.getBooksOnShelf('*');
+            const shelves = await warehouse.getShelfContents('*');
             ctx.body = shelves;
         } catch (error) {
             console.error('Error getting warehouse inventory:', error);
@@ -21,7 +20,7 @@ export function createWarehouseRouter(warehouse: WarehousePort) {
     router.post('/warehouse/add-books', async (ctx) => {
         try {
             const { bookId, shelfId, quantity } = ctx.request.body as {
-                bookId: BookID;
+                bookId: string;
                 shelfId: string;
                 quantity: number;
             };
@@ -32,7 +31,7 @@ export function createWarehouseRouter(warehouse: WarehousePort) {
                 return;
             }
 
-            await warehouse.addBooksToShelf(bookId, shelfId, quantity);
+            await warehouse.addBookToShelf(bookId, shelfId, quantity);
             ctx.status = 200;
             ctx.body = { message: 'Books added successfully' };
         } catch (error) {
@@ -46,7 +45,7 @@ export function createWarehouseRouter(warehouse: WarehousePort) {
     router.post('/warehouse/remove-books', async (ctx) => {
         try {
             const { bookId, shelfId, quantity } = ctx.request.body as {
-                bookId: BookID;
+                bookId: string;
                 shelfId: string;
                 quantity: number;
             };
@@ -57,14 +56,14 @@ export function createWarehouseRouter(warehouse: WarehousePort) {
                 return;
             }
 
-            await warehouse.removeBooksFromShelf(bookId, shelfId, quantity);
+            await warehouse.removeBookFromShelf(bookId, shelfId, quantity);
             ctx.status = 200;
             ctx.body = { message: 'Books removed successfully' };
         } catch (error) {
             console.error('Error removing books from shelf:', error);
-            if (error instanceof Error && error.message === 'Not enough books on shelf') {
+            if (error instanceof Error && error.message === 'Not enough books available') {
                 ctx.status = 400;
-                ctx.body = { error: 'Not enough books on shelf' };
+                ctx.body = { error: 'Not enough books available' };
             } else {
                 ctx.status = 500;
                 ctx.body = { error: 'Could not remove books from shelf' };

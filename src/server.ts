@@ -7,8 +7,8 @@ import { connectToMongo, closeMongoConnection } from './db/mongodb.js';
 import cors from '@koa/cors';
 import { createWarehouseRouter } from './routes/warehouse.js';
 import { createOrderRouter } from './routes/orders.js';
-import { InMemoryWarehouse } from './adapters/in-memory-warehouse.js';
-import { InMemoryOrderSystem } from './adapters/in-memory-warehouse.js';
+import { InMemoryWarehouse } from './domains/warehouse/in-memory-adapter.js';
+import { InMemoryOrderProcessor } from './domains/orders/in-memory-adapter.js';
 
 // Create a new Koa application
 const app = new Koa();
@@ -36,7 +36,7 @@ app.use(bodyParser({
 
 // Create our in-memory systems
 const warehouse = new InMemoryWarehouse();
-const orderSystem = new InMemoryOrderSystem();
+const orderSystem = new InMemoryOrderProcessor(warehouse);
 
 // Set up our routes
 // This connects our API endpoints to the server
