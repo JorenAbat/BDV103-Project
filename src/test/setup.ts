@@ -8,7 +8,7 @@ declare global {
 }
 
 export async function setup() {
-  const instance = await MongoMemoryServer.create({ binary: { version: '6.0.12' } });
+  const instance = await MongoMemoryServer.create({ binary: { version: '7.0.7' } });
 
   while (instance.state === 'new') {
     await instance.start();
