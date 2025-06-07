@@ -1,6 +1,15 @@
 import Router from 'koa-router';
 import { Warehouse } from '../domains/warehouse/domain.js';
 
+// Helper function to validate warehouse requests
+function isValidWarehouseRequest(body: any): body is { bookId: string; shelfId: string; quantity: number } {
+    return body &&
+           typeof body.bookId === 'string' &&
+           typeof body.shelfId === 'string' &&
+           typeof body.quantity === 'number' &&
+           body.quantity > 0;
+}
+
 export function createWarehouseRouter(warehouse: Warehouse) {
     const router = new Router();
 
@@ -19,19 +28,15 @@ export function createWarehouseRouter(warehouse: Warehouse) {
     // Add books to a shelf
     router.post('/warehouse/add-books', async (ctx) => {
         try {
-            const { bookId, shelfId, quantity } = ctx.request.body as {
-                bookId: string;
-                shelfId: string;
-                quantity: number;
-            };
-
-            if (!bookId || !shelfId || typeof quantity !== 'number' || quantity <= 0) {
+            const request = ctx.request.body;
+            
+            if (!isValidWarehouseRequest(request)) {
                 ctx.status = 400;
                 ctx.body = { error: 'Invalid request. Need bookId, shelfId, and positive quantity' };
                 return;
             }
 
-            await warehouse.addBookToShelf(bookId, shelfId, quantity);
+            await warehouse.addBookToShelf(request.bookId, request.shelfId, request.quantity);
             ctx.status = 200;
             ctx.body = { message: 'Books added successfully' };
         } catch (error) {
@@ -44,19 +49,15 @@ export function createWarehouseRouter(warehouse: Warehouse) {
     // Remove books from a shelf
     router.post('/warehouse/remove-books', async (ctx) => {
         try {
-            const { bookId, shelfId, quantity } = ctx.request.body as {
-                bookId: string;
-                shelfId: string;
-                quantity: number;
-            };
-
-            if (!bookId || !shelfId || typeof quantity !== 'number' || quantity <= 0) {
+            const request = ctx.request.body;
+            
+            if (!isValidWarehouseRequest(request)) {
                 ctx.status = 400;
                 ctx.body = { error: 'Invalid request. Need bookId, shelfId, and positive quantity' };
                 return;
             }
 
-            await warehouse.removeBookFromShelf(bookId, shelfId, quantity);
+            await warehouse.removeBookFromShelf(request.bookId, request.shelfId, request.quantity);
             ctx.status = 200;
             ctx.body = { message: 'Books removed successfully' };
         } catch (error) {
@@ -74,8 +75,7 @@ export function createWarehouseRouter(warehouse: Warehouse) {
     // Get locations of a specific book
     router.get('/warehouse/books/:bookId/locations', async (ctx) => {
         try {
-            const { bookId } = ctx.params;
-            const locations = await warehouse.getBookLocations(bookId);
+            const locations = await warehouse.getBookLocations(ctx.params.bookId);
             ctx.body = locations;
         } catch (error) {
             console.error('Error getting book locations:', error);

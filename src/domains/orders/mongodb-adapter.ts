@@ -2,30 +2,34 @@ import { Collection, MongoClient } from 'mongodb';
 import { Order, OrderItem, OrderRepository } from './domain.js';
 import { Warehouse } from '../warehouse/domain.js';
 
-// MongoDB collection name for orders
+// The name of the MongoDB collection that stores orders
 const COLLECTION_NAME = 'orders';
 
-// Interface for the MongoDB document structure
+// The structure of a document in the orders collection
 interface OrderDocument extends Order {
+    // MongoDB's internal document identifier (optional)
     _id?: string;
 }
 
+// This class implements the order system using MongoDB for storage
 export class MongoOrderProcessor implements OrderRepository {
+    // The MongoDB collection that stores order data
     private collection: Collection<OrderDocument>;
 
     constructor(client: MongoClient, dbName: string, private warehouse: Warehouse) {
         this.collection = client.db(dbName).collection<OrderDocument>(COLLECTION_NAME);
     }
 
+    // Create a new order with the specified books
     async createOrder(items: OrderItem[]): Promise<Order> {
-        // Check if all quantities are valid
+        // Make sure all quantities are positive numbers
         for (const item of items) {
             if (item.quantity <= 0) {
                 throw new Error('Quantity must be greater than zero');
             }
         }
 
-        // Check if we have enough books in stock
+        // Check if we have enough books in stock for each item
         for (const item of items) {
             const locations = await this.warehouse.getBookLocations(item.bookId);
             const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
@@ -56,14 +60,17 @@ export class MongoOrderProcessor implements OrderRepository {
         }
     }
 
+    // Get a specific order by its unique identifier
     async getOrder(orderId: string): Promise<Order | null> {
         return this.collection.findOne({ id: orderId });
     }
 
+    // Get a list of all orders in the system
     async getAllOrders(): Promise<Order[]> {
         return this.collection.find().toArray();
     }
 
+    // Update the status of an existing order
     async updateOrderStatus(id: string, status: Order['status']): Promise<void> {
         const order = await this.getOrder(id);
         if (!order) {
@@ -75,20 +82,22 @@ export class MongoOrderProcessor implements OrderRepository {
             throw new Error('Order is already fulfilled');
         }
 
-        // Update the status in MongoDB
+        // Prepare the update with the new status
         const update: Partial<Order> = { status };
         
-        // If order is fulfilled, record the fulfillment time
+        // If the order is being fulfilled, record the fulfillment time
         if (status === 'fulfilled') {
             update.fulfilledAt = new Date();
         }
 
+        // Update the order in MongoDB
         await this.collection.updateOne(
             { id },
             { $set: update }
         );
     }
 
+    // Fulfill an order by marking it as fulfilled and updating inventory
     async fulfillOrder(orderId: string): Promise<Order> {
         // Get the order
         const order = await this.getOrder(orderId);
@@ -96,12 +105,12 @@ export class MongoOrderProcessor implements OrderRepository {
             throw new Error('Order not found');
         }
 
-        // Check if order can be fulfilled
+        // Check if the order can be fulfilled
         if (order.status !== 'pending') {
             throw new Error('Order is not in pending status');
         }
 
-        // Verify stock availability before making any changes
+        // Verify we have enough stock for all items before making any changes
         for (const item of order.items) {
             const locations = await this.warehouse.getBookLocations(item.bookId);
             const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
@@ -111,12 +120,13 @@ export class MongoOrderProcessor implements OrderRepository {
             }
         }
 
-        // Try to remove books from warehouse
+        // Try to remove books from the warehouse
         try {
             for (const item of order.items) {
                 const locations = await this.warehouse.getBookLocations(item.bookId);
                 let remainingQuantity = item.quantity;
 
+                // Remove books from each location until we have enough
                 for (const location of locations) {
                     if (remainingQuantity <= 0) break;
                     
@@ -130,7 +140,7 @@ export class MongoOrderProcessor implements OrderRepository {
                 }
             }
 
-            // Update order status in MongoDB
+            // Update the order status in MongoDB
             const updatedOrder: Order = {
                 ...order,
                 status: 'fulfilled',

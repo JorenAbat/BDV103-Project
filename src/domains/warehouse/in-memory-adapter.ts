@@ -3,8 +3,8 @@ import { BookLocation, Warehouse } from './domain.js';
 // This class implements the warehouse system using in-memory storage
 // It keeps track of where books are stored in the warehouse
 export class InMemoryWarehouse implements Warehouse {
-    // Store book locations in memory
-    // Map<bookId, list of locations where this book is stored>
+    // Store book locations in memory using a Map
+    // The key is the book ID, and the value is a list of locations where the book is stored
     private bookLocations: Map<string, BookLocation[]> = new Map();
 
     // Get all locations where a specific book is stored
@@ -12,9 +12,9 @@ export class InMemoryWarehouse implements Warehouse {
         return this.bookLocations.get(bookId) || [];
     }
 
-    // Add books to a specific shelf
+    // Add books to a specific shelf in the warehouse
     async addBookToShelf(bookId: string, shelfId: string, quantity: number): Promise<void> {
-        // Check if quantity is valid
+        // Make sure the quantity is a positive number
         if (quantity <= 0) {
             throw new Error('Quantity must be greater than zero');
         }
@@ -22,24 +22,24 @@ export class InMemoryWarehouse implements Warehouse {
         // Get current locations for this book
         const locations = this.bookLocations.get(bookId) || [];
         
-        // Check if book is already on this shelf
+        // Check if the book is already on this shelf
         const existingLocation = locations.find(loc => loc.shelfId === shelfId);
 
         if (existingLocation) {
-            // Add to existing quantity
+            // Add to the existing quantity
             existingLocation.quantity += quantity;
         } else {
-            // Create new location
+            // Create a new location for this book
             locations.push({ shelfId, quantity });
         }
 
-        // Save updated locations
+        // Save the updated locations
         this.bookLocations.set(bookId, locations);
     }
 
-    // Remove books from a specific shelf
+    // Remove books from a specific shelf in the warehouse
     async removeBookFromShelf(bookId: string, shelfId: string, quantity: number): Promise<void> {
-        // Check if quantity is valid
+        // Make sure the quantity is a positive number
         if (quantity <= 0) {
             throw new Error('Quantity must be greater than zero');
         }
@@ -47,29 +47,29 @@ export class InMemoryWarehouse implements Warehouse {
         // Get current locations for this book
         const locations = this.bookLocations.get(bookId) || [];
         
-        // Find the shelf
+        // Find the shelf where the book is stored
         const location = locations.find(loc => loc.shelfId === shelfId);
 
-        // Check if book exists on this shelf
+        // Check if the book exists on this shelf
         if (!location) {
             throw new Error('Book not found on shelf');
         }
 
-        // Check if we have enough books
+        // Check if we have enough books to remove
         if (location.quantity < quantity) {
             throw new Error('Not enough books available');
         }
 
-        // Remove books
+        // Remove the books
         location.quantity -= quantity;
 
-        // If shelf is empty, remove it from locations
+        // If the shelf is empty, remove it from the locations
         if (location.quantity === 0) {
             const index = locations.indexOf(location);
             locations.splice(index, 1);
         }
 
-        // Update or remove book locations
+        // Update or remove the book locations
         if (locations.length === 0) {
             this.bookLocations.delete(bookId);
         } else {
@@ -77,7 +77,7 @@ export class InMemoryWarehouse implements Warehouse {
         }
     }
 
-    // Get all books stored on a specific shelf
+    // Get a list of all books stored on a specific shelf
     async getShelfContents(shelfId: string): Promise<{ bookId: string; quantity: number }[]> {
         const shelfContents: { bookId: string; quantity: number }[] = [];
 

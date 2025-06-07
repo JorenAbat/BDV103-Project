@@ -1,39 +1,39 @@
 // A book in an order
 export interface OrderItem {
-    // The ID of the book being ordered
+    // The unique identifier of the book being ordered
     bookId: string;
-    // How many copies of the book are ordered
+    // The number of copies of the book being ordered
     quantity: number;
 }
 
 // A complete order in our system
 export interface Order {
-    // Unique order identifier
+    // A unique identifier for the order
     id: string;
-    // List of books in the order
+    // The list of books being ordered
     items: OrderItem[];
-    // Current status of the order
+    // The current status of the order
     status: 'pending' | 'fulfilled' | 'cancelled';
-    // When the order was created
+    // The date and time when the order was created
     createdAt: Date;
-    // When the order was fulfilled (if it has been)
+    // The date and time when the order was fulfilled (if it has been)
     fulfilledAt?: Date;
 }
 
 // Interface for managing orders in our system
 export interface OrderRepository {
-    // Create a new order
+    // Create a new order with the specified books
     createOrder(items: OrderItem[]): Promise<Order>;
     
-    // Get a specific order by its ID
+    // Get a specific order by its unique identifier
     getOrder(id: string): Promise<Order | null>;
     
-    // Get all orders in the system
+    // Get a list of all orders in the system
     getAllOrders(): Promise<Order[]>;
     
-    // Update an order's status
+    // Update the status of an existing order
     updateOrderStatus(id: string, status: Order['status']): Promise<void>;
     
-    // Fulfill an order (mark as fulfilled and update inventory)
+    // Fulfill an order by marking it as fulfilled and updating inventory
     fulfillOrder(orderId: string): Promise<Order>;
 } 

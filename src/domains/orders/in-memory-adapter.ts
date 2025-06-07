@@ -1,10 +1,11 @@
 import { Order, OrderItem, OrderRepository } from './domain.js';
 import { Warehouse } from '../warehouse/domain.js';
 
-// This class implements the order processing system using in-memory storage
+// This class implements the order system using in-memory storage
 // It handles creating, managing, and fulfilling orders
 export class InMemoryOrderProcessor implements OrderRepository {
-    // Store orders in memory
+    // Store orders in memory using a Map
+    // The key is the order ID, and the value is the order details
     private orders: Map<string, Order> = new Map();
     
     // Keep track of the next order ID to use
@@ -12,16 +13,16 @@ export class InMemoryOrderProcessor implements OrderRepository {
 
     constructor(private warehouse: Warehouse) {}
 
-    // Create a new order
+    // Create a new order with the specified books
     async createOrder(items: OrderItem[]): Promise<Order> {
-        // Check if all quantities are valid
+        // Make sure all quantities are positive numbers
         for (const item of items) {
             if (item.quantity <= 0) {
                 throw new Error('Quantity must be greater than zero');
             }
         }
 
-        // Check if we have enough books in stock
+        // Check if we have enough books in stock for each item
         for (const item of items) {
             const locations = await this.warehouse.getBookLocations(item.bookId);
             const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
@@ -44,17 +45,17 @@ export class InMemoryOrderProcessor implements OrderRepository {
         return order;
     }
 
-    // Get a specific order by ID
+    // Get a specific order by its unique identifier
     async getOrder(orderId: string): Promise<Order | null> {
         return this.orders.get(orderId) || null;
     }
 
-    // Get all orders
+    // Get a list of all orders in the system
     async getAllOrders(): Promise<Order[]> {
         return Array.from(this.orders.values());
     }
 
-    // Update an order's status
+    // Update the status of an existing order
     async updateOrderStatus(id: string, status: Order['status']): Promise<void> {
         const order = await this.getOrder(id);
         if (!order) {
@@ -69,13 +70,13 @@ export class InMemoryOrderProcessor implements OrderRepository {
         // Update the status
         order.status = status;
         
-        // If order is fulfilled, record the fulfillment time
+        // If the order is being fulfilled, record the fulfillment time
         if (status === 'fulfilled') {
             order.fulfilledAt = new Date();
         }
     }
 
-    // Fulfill an order (remove books from warehouse and mark as fulfilled)
+    // Fulfill an order by marking it as fulfilled and updating inventory
     async fulfillOrder(orderId: string): Promise<Order> {
         // Get the order
         const order = await this.getOrder(orderId);
@@ -83,17 +84,17 @@ export class InMemoryOrderProcessor implements OrderRepository {
             throw new Error('Order not found');
         }
 
-        // Check if order can be fulfilled
+        // Check if the order can be fulfilled
         if (order.status !== 'pending') {
             throw new Error('Order is not in pending status');
         }
 
-        // Try to remove books from warehouse
+        // Try to remove books from the warehouse
         for (const item of order.items) {
             const locations = await this.warehouse.getBookLocations(item.bookId);
             let remainingQuantity = item.quantity;
 
-            // Try to remove books from each location until we have enough
+            // Remove books from each location until we have enough
             for (const location of locations) {
                 if (remainingQuantity <= 0) break;
 
@@ -113,7 +114,7 @@ export class InMemoryOrderProcessor implements OrderRepository {
             }
         }
 
-        // Mark order as fulfilled
+        // Mark the order as fulfilled
         order.status = 'fulfilled';
         order.fulfilledAt = new Date();
         this.orders.set(order.id, order);

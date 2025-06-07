@@ -1,31 +1,31 @@
-// A book in our system
+// A book in our bookstore system
 export interface Book {
-    // Unique identifier for the book
+    // A unique identifier for the book
     id: string;
     // The title of the book
     title: string;
-    // The author's name
+    // The name of the book's author
     author: string;
-    // A description of the book
+    // A description of what the book is about
     description: string;
-    // The price of the book
+    // The price of the book in dollars
     price: number;
-    // URL to the book's cover image
+    // A URL to the book's cover image (optional)
     image?: string;
 }
 
 // Interface for managing books in our system
 export interface BookRepository {
-    // Get a single book by its ID
+    // Get a single book by its unique identifier
     getBook(id: string): Promise<Book | null>;
     
-    // Get all books in the system
+    // Get a list of all books in the system
     getAllBooks(): Promise<Book[]>;
     
     // Add a new book to the system
     addBook(book: Book): Promise<void>;
     
-    // Update an existing book
+    // Update the details of an existing book
     updateBook(book: Book): Promise<void>;
     
     // Remove a book from the system
