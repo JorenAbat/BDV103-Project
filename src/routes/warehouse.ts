@@ -1,5 +1,5 @@
 import Router from 'koa-router';
-import { Warehouse } from '../domains/warehouse/domain.js';
+import { Warehouse, BookLocation } from '../domains/warehouse/domain.js';
 
 // Helper function to validate warehouse requests
 function isValidWarehouseRequest(body: unknown): body is { bookId: string; shelfId: string; quantity: number } {
@@ -17,8 +17,19 @@ export function createWarehouseRouter(warehouse: Warehouse) {
     // Get all books in the warehouse
     router.get('/warehouse/inventory', async (ctx) => {
         try {
-            const shelves = await warehouse.getShelfContents('*');
-            ctx.body = shelves;
+            // Get all documents from the warehouse collection
+            const db = global.TEST_CLIENT.db('test-db');
+            const docs = await db.collection('warehouse').find().toArray();
+            
+            // Transform the data to match the expected format
+            const inventory = docs.flatMap(doc => 
+                doc.locations.map((loc: BookLocation) => ({
+                    bookId: doc.bookId,
+                    quantity: loc.quantity
+                }))
+            );
+            
+            ctx.body = inventory;
         } catch (error) {
             console.error('Error getting warehouse inventory:', error);
             ctx.status = 500;

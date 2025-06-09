@@ -3,18 +3,55 @@ import fetch from 'node-fetch';
 import { BookLocation } from '../domains/warehouse/domain.js';
 import { Order } from '../domains/orders/domain.js';
 import { setup, teardown } from './setup.js';
-import { startServer } from '../server.js';
 import type { Server } from 'http';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { MongoWarehouse } from '../domains/warehouse/mongodb-adapter.js';
+import { MongoOrderProcessor } from '../domains/orders/mongodb-adapter.js';
+import Koa from 'koa';
+import bodyParser from 'koa-bodyparser';
+import qs from 'koa-qs';
+import cors from '@koa/cors';
+import { createWarehouseRouter } from '../routes/warehouse.js';
+import { createOrderRouter } from '../routes/orders.js';
 
 const API_BASE_URL = 'http://localhost:3000';
 let server: Server;
 let mongoInstance: MongoMemoryServer;
 
+async function createTestServer() {
+    const app = new Koa();
+    
+    app.use(cors({
+        origin: '*',
+        allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
+        exposeHeaders: ['WWW-Authenticate', 'Server-Authorization'],
+        credentials: true
+    }));
+
+    qs(app);
+    app.use(bodyParser({ 
+        enableTypes: ['json'],
+        jsonLimit: '1mb'
+    }));
+
+    const warehouse = new MongoWarehouse(global.TEST_CLIENT, 'test-db');
+    const orderSystem = new MongoOrderProcessor(global.TEST_CLIENT, 'test-db', warehouse);
+
+    app.use(createWarehouseRouter(warehouse).routes());
+    app.use(createOrderRouter(orderSystem).routes());
+
+    return new Promise<Server>((resolve) => {
+        const server = app.listen(3000, () => {
+            resolve(server);
+        });
+    });
+}
+
 describe('Integration Tests', () => {
     beforeAll(async () => {
         mongoInstance = await setup();
-        server = await startServer();
+        server = await createTestServer();
     }, 30000);
 
     afterAll(async () => {
@@ -23,7 +60,10 @@ describe('Integration Tests', () => {
     }, 30000);
 
     beforeEach(async () => {
-        await fetch(`${API_BASE_URL}/test/clear-db`, { method: 'POST' });
+        // Clear all collections in the test database
+        const db = global.TEST_CLIENT.db('test-db');
+        await db.collection('warehouse').deleteMany({});
+        await db.collection('orders').deleteMany({});
     });
 
     describe('Warehouse API', () => {
@@ -129,10 +169,13 @@ describe('Integration Tests', () => {
                 })
             });
 
-            const response = await fetch(`${API_BASE_URL}/books`);
-            const books = await response.json();
+            const response = await fetch(`${API_BASE_URL}/warehouse/inventory`);
+            const inventory = await response.json();
 
-            expect(books).toBeInstanceOf(Array);
+            expect(inventory).toBeInstanceOf(Array);
+            expect(inventory).toHaveLength(2);
+            expect(inventory).toContainEqual({ bookId: 'book-001', quantity: 5 });
+            expect(inventory).toContainEqual({ bookId: 'book-002', quantity: 3 });
         });
 
         it('should show correct stock levels when ordering', async () => {
