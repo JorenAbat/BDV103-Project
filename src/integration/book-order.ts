@@ -19,23 +19,35 @@ export async function enrichOrderWithBookDetails(
     getBook: (id: string) => Promise<Book | null>
 ): Promise<OrderWithDetails | null> {
     // Create a list to store items with book details
-    const itemsWithDetails: OrderItemWithDetails[] = [];
+    const itemsWithDetails = [];
 
     // Get book details for each item in the order
     for (const item of order.items) {
+        // Get book details
         const book = await getBook(item.bookId);
+        
+        // If book not found, return null
         if (!book) {
-            return null; // Book not found in our system
+            return null;
         }
-        itemsWithDetails.push({
-            ...item,
-            book
-        });
+
+        // Add item with book details
+        const itemWithDetails = {
+            bookId: item.bookId,
+            quantity: item.quantity,
+            book: book
+        };
+        itemsWithDetails.push(itemWithDetails);
     }
 
-    // Return the order with complete book details
-    return {
-        ...order,
+    // Create and return order with details
+    const orderWithDetails = {
+        id: order.id,
+        status: order.status,
+        createdAt: order.createdAt,
+        fulfilledAt: order.fulfilledAt,
         items: itemsWithDetails
     };
+
+    return orderWithDetails;
 } 

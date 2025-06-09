@@ -58,6 +58,17 @@ export async function startServer() {
         const server = app.listen(PORT, () => {
             console.log(`Server running on http://localhost:${PORT}`);
         });
+
+        // Handle server shutdown gracefully
+        process.on('SIGINT', async () => {
+            console.log('Shutting down server...');
+            await closeMongoConnection();
+            server.close(() => {
+                console.log('Server stopped');
+                process.exit(0);
+            });
+        });
+
         return server;
     } catch (error) {
         // If something goes wrong, log the error and stop the server
@@ -65,13 +76,6 @@ export async function startServer() {
         process.exit(1);
     }
 }
-
-// Handle server shutdown gracefully
-// This ensures we close the MongoDB connection when the server stops
-process.on('SIGINT', async () => {
-    await closeMongoConnection();
-    process.exit(0);
-});
 
 // Start the server if this file is run directly
 if (require.main === module) {

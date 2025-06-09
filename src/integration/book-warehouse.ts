@@ -15,8 +15,12 @@ export async function getBookWithStock(
 ): Promise<BookWithStock | null> {
     // Get all locations where this book is stored
     const locations = await warehouse.getBookLocations(bookId);
+    
     // Calculate total stock by adding up quantities from all locations
-    const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
+    let totalStock = 0;
+    for (const location of locations) {
+        totalStock += location.quantity;
+    }
     
     // Get the book's details from the book listing system
     const book = await bookRepository.getBook(bookId);
@@ -24,19 +28,31 @@ export async function getBookWithStock(
         return null; // Book doesn't exist in our system
     }
 
-    // Return the book with its stock level
-    return {
-        ...book,
+    // Create and return the book with its stock level
+    const bookWithStock = {
+        id: book.id,
+        title: book.title,
+        author: book.author,
+        description: book.description,
+        price: book.price,
+        image: book.image,
         stock: totalStock
     };
+
+    return bookWithStock;
 }
 
 // Check if we have enough books in stock to fulfill an order
 export async function validateBookStock(bookId: string, quantity: number, warehouse: Warehouse): Promise<boolean> {
     // Get all locations where this book is stored
     const locations = await warehouse.getBookLocations(bookId);
+    
     // Calculate total stock by adding up quantities from all locations
-    const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
+    let totalStock = 0;
+    for (const location of locations) {
+        totalStock += location.quantity;
+    }
+    
     // Check if we have enough books
     return totalStock >= quantity;
 } 

@@ -25,7 +25,10 @@ export class InMemoryOrderProcessor implements OrderRepository {
         // Check if we have enough books in stock for each item
         for (const item of items) {
             const locations = await this.warehouse.getBookLocations(item.bookId);
-            const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
+            let totalStock = 0;
+            for (const location of locations) {
+                totalStock += location.quantity;
+            }
             
             if (totalStock < item.quantity) {
                 throw new Error('Not enough books available');
@@ -34,11 +37,12 @@ export class InMemoryOrderProcessor implements OrderRepository {
 
         // Create the new order
         const order: Order = {
-            id: `ORD-${this.nextOrderId++}`,
+            id: `ORD-${this.nextOrderId}`,
             items,
             status: 'pending',
             createdAt: new Date()
         };
+        this.nextOrderId += 1;
 
         // Save the order
         this.orders.set(order.id, order);
@@ -47,12 +51,20 @@ export class InMemoryOrderProcessor implements OrderRepository {
 
     // Get a specific order by its unique identifier
     async getOrder(orderId: string): Promise<Order | null> {
-        return this.orders.get(orderId) || null;
+        const order = this.orders.get(orderId);
+        if (!order) {
+            return null;
+        }
+        return order;
     }
 
     // Get a list of all orders in the system
     async getAllOrders(): Promise<Order[]> {
-        return Array.from(this.orders.values());
+        const orders = [];
+        for (const order of this.orders.values()) {
+            orders.push(order);
+        }
+        return orders;
     }
 
     // Update the status of an existing order
@@ -96,7 +108,9 @@ export class InMemoryOrderProcessor implements OrderRepository {
 
             // Remove books from each location until we have enough
             for (const location of locations) {
-                if (remainingQuantity <= 0) break;
+                if (remainingQuantity <= 0) {
+                    break;
+                }
 
                 const quantityToRemove = Math.min(remainingQuantity, location.quantity);
                 try {

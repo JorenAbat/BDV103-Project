@@ -2,6 +2,7 @@ import Router from 'koa-router';
 import { Book } from '../adapter/assignment-1.js';
 import { client } from './db/mongodb.js';
 import { Collection } from 'mongodb';
+import { Context } from 'koa';
 
 // Create a router to handle our API endpoints
 const router = new Router();
@@ -9,6 +10,14 @@ const router = new Router();
 // Connect to our MongoDB database
 const db = client.db('bookstore');
 const booksCollection: Collection<Book> = db.collection<Book>('books');
+
+// Define the shape of a book filter
+interface BookFilter {
+    from?: number;
+    to?: number;
+    name?: string;
+    author?: string;
+}
 
 // Check if a book has all the required information
 function isValidBook(book: Book): boolean {
@@ -18,11 +27,18 @@ function isValidBook(book: Book): boolean {
            typeof book.price === 'number';
 }
 
+// Handle book-related errors
+function handleBookError(error: unknown, ctx: Context, operation: string) {
+    console.error(`Error ${operation}:`, error);
+    ctx.status = 500;
+    ctx.body = { error: `Could not ${operation}. Please try again.` };
+}
+
 // Get a list of books, with optional filters
 router.get('/books', async (ctx) => {
     try {
         // Get filters from the URL if they exist
-        let filters: Array<{ from?: number, to?: number, name?: string, author?: string }> | undefined;
+        let filters: BookFilter[] = [];
         if (ctx.query.filters) {
             try {
                 filters = JSON.parse(ctx.query.filters as string);
@@ -33,8 +49,6 @@ router.get('/books', async (ctx) => {
             }
         }
 
-        // Ensure filters is always an array
-        filters = filters ?? [];
         // Remove empty filters (no valid fields)
         filters = filters.filter(f =>
             f.from !== undefined ||
@@ -72,9 +86,7 @@ router.get('/books', async (ctx) => {
         const filteredBooks = await booksCollection.find({ $or: filterQueries }).toArray();
         ctx.body = filteredBooks;
     } catch (error) {
-        console.error('Error getting books:', error);
-        ctx.status = 500;
-        ctx.body = { error: 'Could not get the list of books. Please try again.' };
+        handleBookError(error, ctx, 'getting books');
     }
 });
 
@@ -123,9 +135,7 @@ router.post('/books', async (ctx) => {
         }
         ctx.body = { id: book.id };
     } catch (error) {
-        console.error('Error saving book:', error);
-        ctx.status = 500;
-        ctx.body = { error: 'Could not save the book. Please try again.' };
+        handleBookError(error, ctx, 'saving book');
     }
 });
 
@@ -148,9 +158,7 @@ router.delete('/books/:id', async (ctx) => {
         // Book was successfully deleted
         ctx.status = 204;
     } catch (error) {
-        console.error('Error removing book:', error);
-        ctx.status = 500;
-        ctx.body = { error: 'Could not remove the book. Please try again.' };
+        handleBookError(error, ctx, 'removing book');
     }
 });
 
@@ -165,9 +173,7 @@ router.post('/test/clear-db', async (ctx) => {
         ctx.status = 200;
         ctx.body = { message: 'Database cleared' };
     } catch (error) {
-        console.error('Error clearing database:', error);
-        ctx.status = 500;
-        ctx.body = { error: 'Could not clear the database' };
+        handleBookError(error, ctx, 'clearing database');
     }
 });
 

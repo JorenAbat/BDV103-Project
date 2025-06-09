@@ -6,7 +6,10 @@ export async function fulfillOrder(order: Order, warehouse: Warehouse): Promise<
     // First check if we have enough stock for all items
     for (const item of order.items) {
         const locations = await warehouse.getBookLocations(item.bookId);
-        const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
+        let totalStock = 0;
+        for (const location of locations) {
+            totalStock += location.quantity;
+        }
         if (totalStock < item.quantity) {
             return false; // Not enough books in stock
         }
@@ -19,7 +22,9 @@ export async function fulfillOrder(order: Order, warehouse: Warehouse): Promise<
 
         // Remove books from each location until we have enough
         for (const location of locations) {
-            if (remainingQuantity <= 0) break;
+            if (remainingQuantity <= 0) {
+                break;
+            }
 
             const quantityToRemove = Math.min(remainingQuantity, location.quantity);
             await warehouse.removeBookFromShelf(item.bookId, location.shelfId, quantityToRemove);
@@ -35,7 +40,10 @@ export async function validateOrderFulfillment(order: Order, warehouse: Warehous
     // Check each item in the order
     for (const item of order.items) {
         const locations = await warehouse.getBookLocations(item.bookId);
-        const totalStock = locations.reduce((sum, loc) => sum + loc.quantity, 0);
+        let totalStock = 0;
+        for (const location of locations) {
+            totalStock += location.quantity;
+        }
         if (totalStock < item.quantity) {
             return false; // Not enough books in stock
         }

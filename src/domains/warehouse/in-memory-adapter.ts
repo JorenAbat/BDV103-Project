@@ -9,7 +9,11 @@ export class InMemoryWarehouse implements Warehouse {
 
     // Get all locations where a specific book is stored
     async getBookLocations(bookId: string): Promise<BookLocation[]> {
-        return this.bookLocations.get(bookId) || [];
+        const locations = this.bookLocations.get(bookId);
+        if (!locations) {
+            return [];
+        }
+        return locations;
     }
 
     // Add books to a specific shelf in the warehouse
@@ -20,16 +24,23 @@ export class InMemoryWarehouse implements Warehouse {
         }
 
         // Get current locations for this book
-        const locations = this.bookLocations.get(bookId) || [];
+        let locations = this.bookLocations.get(bookId);
+        if (!locations) {
+            locations = [];
+        }
         
         // Check if the book is already on this shelf
-        const existingLocation = locations.find(loc => loc.shelfId === shelfId);
+        let found = false;
+        for (const location of locations) {
+            if (location.shelfId === shelfId) {
+                location.quantity += quantity;
+                found = true;
+                break;
+            }
+        }
 
-        if (existingLocation) {
-            // Add to the existing quantity
-            existingLocation.quantity += quantity;
-        } else {
-            // Create a new location for this book
+        // If not found, add new location
+        if (!found) {
             locations.push({ shelfId, quantity });
         }
 
@@ -45,28 +56,35 @@ export class InMemoryWarehouse implements Warehouse {
         }
 
         // Get current locations for this book
-        const locations = this.bookLocations.get(bookId) || [];
-        
-        // Find the shelf where the book is stored
-        const location = locations.find(loc => loc.shelfId === shelfId);
-
-        // Check if the book exists on this shelf
-        if (!location) {
+        const locations = this.bookLocations.get(bookId);
+        if (!locations) {
             throw new Error('Book not found on shelf');
         }
+        
+        // Find the shelf where the book is stored
+        let found = false;
+        for (const location of locations) {
+            if (location.shelfId === shelfId) {
+                found = true;
+                // Check if we have enough books to remove
+                if (location.quantity < quantity) {
+                    throw new Error('Not enough books available');
+                }
 
-        // Check if we have enough books to remove
-        if (location.quantity < quantity) {
-            throw new Error('Not enough books available');
+                // Remove the books
+                location.quantity -= quantity;
+
+                // If the shelf is empty, remove it from the locations
+                if (location.quantity === 0) {
+                    const index = locations.indexOf(location);
+                    locations.splice(index, 1);
+                }
+                break;
+            }
         }
 
-        // Remove the books
-        location.quantity -= quantity;
-
-        // If the shelf is empty, remove it from the locations
-        if (location.quantity === 0) {
-            const index = locations.indexOf(location);
-            locations.splice(index, 1);
+        if (!found) {
+            throw new Error('Book not found on shelf');
         }
 
         // Update or remove the book locations
@@ -79,13 +97,15 @@ export class InMemoryWarehouse implements Warehouse {
 
     // Get a list of all books stored on a specific shelf
     async getShelfContents(shelfId: string): Promise<{ bookId: string; quantity: number }[]> {
-        const shelfContents: { bookId: string; quantity: number }[] = [];
+        const shelfContents = [];
 
         // Look through all books to find ones on this shelf
         for (const [bookId, locations] of this.bookLocations.entries()) {
-            const location = locations.find(loc => loc.shelfId === shelfId);
-            if (location) {
-                shelfContents.push({ bookId, quantity: location.quantity });
+            for (const location of locations) {
+                if (location.shelfId === shelfId) {
+                    shelfContents.push({ bookId, quantity: location.quantity });
+                    break;
+                }
             }
         }
 
