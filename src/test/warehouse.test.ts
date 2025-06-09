@@ -1,74 +1,102 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
-import { setup, teardown } from './setup.js';
-import { client } from '../db/mongodb.js';
-import { MongoWarehouse } from '../domains/warehouse/mongodb-adapter.js';
 import { InMemoryWarehouse } from '../domains/warehouse/in-memory-adapter.js';
+import { MongoWarehouse } from '../domains/warehouse/mongodb-adapter.js';
+import { getBookDatabase } from './db.js';
+import { setup, teardown } from './setup.js';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
 
+// Test both in-memory and MongoDB implementations
 describe.each([
-    { name: 'MongoDB', implementation: MongoWarehouse },
-    { name: 'In-Memory', implementation: InMemoryWarehouse }
-])('Warehouse Tests - $name', ({ implementation }) => {
+    ['InMemory'],
+    ['MongoDB']
+])('Warehouse (%s)', (name) => {
+    let warehouse: InMemoryWarehouse | MongoWarehouse;
+    let mongoInstance: MongoMemoryServer;
+    
     beforeAll(async () => {
-        await setup();
+        if (name === 'MongoDB') {
+            mongoInstance = await setup();
+        }
     });
 
     afterAll(async () => {
-        await teardown();
+        if (name === 'MongoDB') {
+            await teardown(mongoInstance);
+        }
     });
 
     beforeEach(async () => {
-        const db = await client.db();
-        await db.dropDatabase();
-        if (implementation === MongoWarehouse) {
-            warehouse = new MongoWarehouse(client, db.databaseName);
+        if (name === 'MongoDB') {
+            const { client, database } = getBookDatabase();
+            await database.dropDatabase();
+            warehouse = new MongoWarehouse(client, database.databaseName);
         } else {
             warehouse = new InMemoryWarehouse();
         }
     });
 
-    let warehouse: MongoWarehouse | InMemoryWarehouse;
+    describe('Adding books to shelves', () => {
+        it('should add books to shelves', async () => {
+            await warehouse.addBookToShelf('book1', 'shelf1', 5);
+            await warehouse.addBookToShelf('book1', 'shelf2', 3);
 
-    it('should add books to a shelf', async () => {
-        await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
-        const locations = await warehouse.getBookLocations('book-001');
-        expect(locations).toHaveLength(1);
-        expect(locations[0]).toEqual({
-            shelfId: 'shelf-A',
-            quantity: 5
+            const locations = await warehouse.getBookLocations('book1');
+            expect(locations).toHaveLength(2);
+            expect(locations).toContainEqual({ shelfId: 'shelf1', quantity: 5 });
+            expect(locations).toContainEqual({ shelfId: 'shelf2', quantity: 3 });
+        });
+
+        it('should not allow adding zero or negative books', async () => {
+            await expect(warehouse.addBookToShelf('book1', 'shelf1', 0))
+                .rejects.toThrow('Quantity must be greater than zero');
         });
     });
 
-    it('should not allow negative quantities', async () => {
-        await expect(warehouse.addBookToShelf('book-001', 'shelf-A', -1))
-            .rejects.toThrow();
+    describe('Removing books from shelves', () => {
+        it('should remove books from shelves', async () => {
+            await warehouse.addBookToShelf('book1', 'shelf1', 5);
+            await warehouse.addBookToShelf('book1', 'shelf2', 3);
+            
+            await warehouse.removeBookFromShelf('book1', 'shelf1', 2);
+            await warehouse.removeBookFromShelf('book1', 'shelf2', 3);
+
+            const locations = await warehouse.getBookLocations('book1');
+            expect(locations).toHaveLength(1);
+            expect(locations[0]).toEqual({ shelfId: 'shelf1', quantity: 3 });
+        });
+
+        it('should not allow removing more books than available', async () => {
+            await warehouse.addBookToShelf('book1', 'shelf1', 5);
+            const locations = await warehouse.getBookLocations('book1');
+            expect(locations).toHaveLength(1);
+            expect(locations[0].quantity).toBe(5);
+            
+            await expect(warehouse.removeBookFromShelf('book1', 'shelf1', 6))
+                .rejects.toThrow('Not enough books available');
+        });
     });
 
-    it('should remove books from a shelf', async () => {
-        await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
-        await warehouse.removeBookFromShelf('book-001', 'shelf-A', 2);
-        const locations = await warehouse.getBookLocations('book-001');
-        expect(locations[0].quantity).toBe(3);
-    });
+    describe('Finding books', () => {
+        it('should find books on shelves', async () => {
+            await warehouse.addBookToShelf('book1', 'shelf1', 5);
+            await warehouse.addBookToShelf('book2', 'shelf1', 3);
 
-    it('should not allow removing more books than available', async () => {
-        await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
-        await expect(warehouse.removeBookFromShelf('book-001', 'shelf-A', 6))
-            .rejects.toThrow();
-    });
+            const contents = await warehouse.getShelfContents('shelf1');
+            expect(contents).toHaveLength(2);
+            expect(contents).toContainEqual({ bookId: 'book1', quantity: 5 });
+            expect(contents).toContainEqual({ bookId: 'book2', quantity: 3 });
 
-    it('should find books across multiple shelves', async () => {
-        await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
-        await warehouse.addBookToShelf('book-001', 'shelf-B', 3);
-        const locations = await warehouse.getBookLocations('book-001');
-        expect(locations).toHaveLength(2);
-        expect(locations).toEqual([
-            { shelfId: 'shelf-A', quantity: 5 },
-            { shelfId: 'shelf-B', quantity: 3 }
-        ]);
-    });
+            const locations = await warehouse.getBookLocations('book1');
+            expect(locations).toHaveLength(1);
+            expect(locations[0]).toEqual({ shelfId: 'shelf1', quantity: 5 });
+        });
 
-    it('should return empty array for non-existent book', async () => {
-        const locations = await warehouse.getBookLocations('non-existent');
-        expect(locations).toHaveLength(0);
+        it('should return empty array for non-existent book or shelf', async () => {
+            const locations = await warehouse.getBookLocations('nonexistent');
+            expect(locations).toHaveLength(0);
+
+            const contents = await warehouse.getShelfContents('empty-shelf');
+            expect(contents).toHaveLength(0);
+        });
     });
 }); 

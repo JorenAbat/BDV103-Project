@@ -1,83 +1,68 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { getBookDatabase, Book } from './db.js';
 import { setup, teardown } from './setup.js';
-import { client } from '../db/mongodb.js';
-import type { Book } from '../domains/book-listing/domain.js';
+import { MongoClient, Collection } from 'mongodb';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
 
-describe('Book Tests', () => {
-    beforeAll(async () => {
-        await setup();
-        await client.connect();
-    });
+describe('Book Database Tests', () => {
+  const sampleBook: Book = {
+    title: 'Test Book',
+    author: 'Test Author',
+    isbn: '1234567890',
+    price: 29.99,
+    quantity: 10
+  };
 
-    afterAll(async () => {
-        await client.close();
-        await teardown();
-    });
+  let client: MongoClient;
+  let books: Collection<Book>;
+  let mongoInstance: MongoMemoryServer;
 
-    it('should insert and retrieve a book', async () => {
-        const book: Book = {
-            id: 'book-001',
-            title: 'Test Book',
-            author: 'Test Author',
-            description: 'A test book',
-            price: 19.99
-        };
+  beforeAll(async () => {
+    mongoInstance = await setup();
+    const db = getBookDatabase();
+    client = db.client;
+    books = db.books;
+    await client.connect();
+  });
 
-        const db = await client.db();
-        const collection = db.collection('books');
-        await collection.insertOne(book);
+  afterAll(async () => {
+    await client.close();
+    await teardown(mongoInstance);
+  });
 
-        const retrieved = await collection.findOne({ id: book.id });
-        expect(retrieved).toEqual(book);
-    });
+  it('should insert and retrieve a book', async () => {
+    await books.deleteMany({});
+    const result = await books.insertOne(sampleBook);
+    expect(result.acknowledged).toBe(true);
+    const retrievedBook = await books.findOne({ isbn: sampleBook.isbn });
+    expect(retrievedBook).toMatchObject(sampleBook);
+  });
 
-    it('should return null for non-existent book', async () => {
-        const db = await client.db();
-        const collection = db.collection('books');
-        const book = await collection.findOne({ id: 'non-existent' });
-        expect(book).toBeNull();
-    });
+  it('should not find a non-existent book', async () => {
+    await books.deleteMany({});
+    const nonExistentBook = await books.findOne({ isbn: 'nonexistent' });
+    expect(nonExistentBook).toBeNull();
+  });
 
-    it('should update a book', async () => {
-        const book: Book = {
-            id: 'book-002',
-            title: 'Original Title',
-            author: 'Original Author',
-            description: 'Original description',
-            price: 29.99
-        };
+  it('should update a book', async () => {
+    await books.deleteMany({});
+    await books.insertOne(sampleBook);
+    const updatedQuantity = 20;
+    await books.updateOne(
+      { isbn: sampleBook.isbn },
+      { $set: { quantity: updatedQuantity } }
+    );
+    const updatedBook = await books.findOne({ isbn: sampleBook.isbn });
+    expect(updatedBook?.quantity).toBe(updatedQuantity);
+  });
 
-        const db = await client.db();
-        const collection = db.collection('books');
-        await collection.insertOne(book);
-
-        const updatedBook = { 
-            ...book, 
-            title: 'Updated Title', 
-            description: 'Updated description',
-            price: 39.99 
-        };
-        await collection.updateOne({ id: book.id }, { $set: updatedBook });
-
-        const retrieved = await collection.findOne({ id: book.id });
-        expect(retrieved).toEqual(updatedBook);
-    });
-
-    it('should delete a book', async () => {
-        const book: Book = {
-            id: 'book-003',
-            title: 'To Delete',
-            author: 'Test Author',
-            description: 'A book to delete',
-            price: 9.99
-        };
-
-        const db = await client.db();
-        const collection = db.collection('books');
-        await collection.insertOne(book);
-
-        await collection.deleteOne({ id: book.id });
-        const retrieved = await collection.findOne({ id: book.id });
-        expect(retrieved).toBeNull();
-    });
+  it('should delete a book', async () => {
+    await books.deleteMany({});
+    await books.insertOne(sampleBook);
+    const deleteResult = await books.deleteOne({ isbn: sampleBook.isbn });
+    expect(deleteResult.acknowledged).toBe(true);
+    expect(deleteResult.deletedCount).toBe(1);
+    const deletedBook = await books.findOne({ isbn: sampleBook.isbn });
+    expect(deletedBook).toBeNull();
+  });
 }); 

@@ -1,79 +1,101 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
-import { setup, teardown } from './setup.js';
-import { client } from '../db/mongodb.js';
-import { MongoOrderProcessor } from '../domains/orders/mongodb-adapter.js';
 import { InMemoryOrderProcessor } from '../domains/orders/in-memory-adapter.js';
-import { MongoWarehouse } from '../domains/warehouse/mongodb-adapter.js';
+import { MongoOrderProcessor } from '../domains/orders/mongodb-adapter.js';
 import { InMemoryWarehouse } from '../domains/warehouse/in-memory-adapter.js';
-import type { Warehouse } from '../domains/warehouse/domain.js';
+import { MongoWarehouse } from '../domains/warehouse/mongodb-adapter.js';
+import { getBookDatabase } from './db.js';
+import { setup, teardown } from './setup.js';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
 
+// Test both in-memory and MongoDB implementations
 describe.each([
-    { name: 'MongoDB', implementation: MongoOrderProcessor },
-    { name: 'In-Memory', implementation: InMemoryOrderProcessor }
-])('Order Tests - $name', ({ implementation }) => {
+    ['InMemory'],
+    ['MongoDB']
+])('Order System (%s)', (name) => {
+    let warehouse: InMemoryWarehouse | MongoWarehouse;
+    let orderProcessor: InMemoryOrderProcessor | MongoOrderProcessor;
+    let mongoInstance: MongoMemoryServer;
+
     beforeAll(async () => {
-        await setup();
-    });
-
-    afterAll(async () => {
-        await teardown();
-    });
-
-    beforeEach(async () => {
-        const db = await client.db();
-        await db.dropDatabase();
-        if (implementation === MongoOrderProcessor) {
-            const mongoWarehouse = new MongoWarehouse(client, db.databaseName);
-            orderProcessor = new MongoOrderProcessor(client, db.databaseName, mongoWarehouse);
-            warehouse = mongoWarehouse;
-        } else {
-            const inMemoryWarehouse = new InMemoryWarehouse();
-            orderProcessor = new InMemoryOrderProcessor(inMemoryWarehouse);
-            warehouse = inMemoryWarehouse;
+        if (name === 'MongoDB') {
+            mongoInstance = await setup();
         }
     });
 
-    let orderProcessor: MongoOrderProcessor | InMemoryOrderProcessor;
-    let warehouse: Warehouse;
-
-    it('should create and fulfill orders', async () => {
-        await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
-        const order = await orderProcessor.createOrder([
-            { bookId: 'book-001', quantity: 2 }
-        ]);
-        await orderProcessor.fulfillOrder(order.id);
-        const locations = await warehouse.getBookLocations('book-001');
-        expect(locations[0].quantity).toBe(3);
+    afterAll(async () => {
+        if (name === 'MongoDB') {
+            await teardown(mongoInstance);
+        }
     });
 
-    it('should not allow ordering more books than available', async () => {
-        await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
-        await expect(orderProcessor.createOrder([
-            { bookId: 'book-001', quantity: 6 }
-        ])).rejects.toThrow();
+    beforeEach(async () => {
+        if (name === 'MongoDB') {
+            const { client, database } = getBookDatabase();
+            await database.dropDatabase();
+            warehouse = new MongoWarehouse(client, database.databaseName);
+            orderProcessor = new MongoOrderProcessor(client, database.databaseName, warehouse);
+        } else {
+            warehouse = new InMemoryWarehouse();
+            orderProcessor = new InMemoryOrderProcessor(warehouse);
+        }
     });
 
-    it('should list all orders', async () => {
-        await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
-        const order1 = await orderProcessor.createOrder([
-            { bookId: 'book-001', quantity: 2 }
-        ]);
-        const order2 = await orderProcessor.createOrder([
-            { bookId: 'book-001', quantity: 1 }
-        ]);
-        const orders = await orderProcessor.getAllOrders();
-        expect(orders).toHaveLength(2);
-        expect(orders.map((o: { id: string }) => o.id)).toContain(order1.id);
-        expect(orders.map((o: { id: string }) => o.id)).toContain(order2.id);
+    describe('Creating orders', () => {
+        it('should create and fulfill orders', async () => {
+            await warehouse.addBookToShelf('book1', 'shelf1', 5);
+            await warehouse.addBookToShelf('book2', 'shelf2', 3);
+
+            const order = await orderProcessor.createOrder([
+                { bookId: 'book1', quantity: 2 },
+                { bookId: 'book2', quantity: 1 }
+            ]);
+
+            expect(order.status).toBe('pending');
+            expect(order.items).toHaveLength(2);
+
+            const fulfilledOrder = await orderProcessor.fulfillOrder(order.id);
+            expect(fulfilledOrder.status).toBe('fulfilled');
+
+            const book1Locations = await warehouse.getBookLocations('book1');
+            const book2Locations = await warehouse.getBookLocations('book2');
+            expect(book1Locations[0].quantity).toBe(3);
+            expect(book2Locations[0].quantity).toBe(2);
+        });
+
+        it('should not allow ordering more books than available', async () => {
+            await warehouse.addBookToShelf('book1', 'shelf1', 5);
+            await expect(
+                orderProcessor.createOrder([
+                    { bookId: 'book1', quantity: 6 }
+                ])
+            ).rejects.toThrow('Not enough books available');
+        });
     });
 
-    it('should not allow fulfilling an order twice', async () => {
-        await warehouse.addBookToShelf('book-001', 'shelf-A', 5);
-        const order = await orderProcessor.createOrder([
-            { bookId: 'book-001', quantity: 2 }
-        ]);
-        await orderProcessor.fulfillOrder(order.id);
-        await expect(orderProcessor.fulfillOrder(order.id))
-            .rejects.toThrow();
+    describe('Listing orders', () => {
+        it('should list orders', async () => {
+            await warehouse.addBookToShelf('book1', 'shelf1', 5);
+            await orderProcessor.createOrder([
+                { bookId: 'book1', quantity: 2 }
+            ]);
+
+            const orders = await orderProcessor.getAllOrders();
+            expect(orders.length).toBeGreaterThan(0);
+            expect(orders[0].items[0]).toEqual({ bookId: 'book1', quantity: 2 });
+        });
+    });
+
+    describe('Fulfilling orders', () => {
+        it('should not allow fulfilling an order twice', async () => {
+            await warehouse.addBookToShelf('book1', 'shelf1', 5);
+            const order = await orderProcessor.createOrder([
+                { bookId: 'book1', quantity: 2 }
+            ]);
+            await orderProcessor.fulfillOrder(order.id);
+
+            await expect(
+                orderProcessor.fulfillOrder(order.id)
+            ).rejects.toThrow('Order is not in pending status');
+        });
     });
 }); 

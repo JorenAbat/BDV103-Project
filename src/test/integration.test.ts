@@ -6,19 +6,21 @@ import { setup, teardown } from './setup.js';
 import { client } from '../db/mongodb.js';
 import { startServer } from '../server.js';
 import type { Server } from 'http';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
 
 const API_BASE_URL = 'http://localhost:3000';
 let server: Server;
+let mongoInstance: MongoMemoryServer;
 
 describe('Integration Tests', () => {
     beforeAll(async () => {
-        await setup();
+        mongoInstance = await setup();
         await client.connect();
         server = await startServer();
     });
 
     afterAll(async () => {
-        await teardown();
+        await teardown(mongoInstance);
         await client.close();
         server?.close();
     });
