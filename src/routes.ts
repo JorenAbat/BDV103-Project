@@ -3,6 +3,8 @@ import { Book } from '../adapter/assignment-1.js';
 import { client } from './db/mongodb.js';
 import { Collection } from 'mongodb';
 
+type QueryValue = number | { $regex: string, $options: string } | { $gte?: number, $lte?: number };
+
 // Create a router to handle our API endpoints
 // This router will handle all book-related operations
 const router = new Router();
@@ -25,7 +27,7 @@ function isValidBook(book: Book): boolean {
 // This helps us search for books by price range, name, or author
 function createFilterQuery(filters: Array<{ from?: number, to?: number, name?: string, author?: string }>) {
     return filters.map(filter => {
-        const query: Record<string, any> = {};
+        const query: Record<string, QueryValue> = {};
         
         // Add price range filters (e.g., books between $10 and $20)
         if (filter.from !== undefined || filter.to !== undefined) {

@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll } from 'vitest';
 import fetch from 'node-fetch';
-import { getBookDatabase } from './db.js';
 import { BookLocation } from '../domains/warehouse/domain.js';
 import { Order } from '../domains/orders/domain.js';
-import { Book } from '../domains/book-listing/domain.js';
 import { setup, teardown } from './setup.js';
 
 const API_BASE_URL = 'http://localhost:3000';

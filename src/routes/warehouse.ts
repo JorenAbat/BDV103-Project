@@ -2,12 +2,13 @@ import Router from 'koa-router';
 import { Warehouse } from '../domains/warehouse/domain.js';
 
 // Helper function to validate warehouse requests
-function isValidWarehouseRequest(body: any): body is { bookId: string; shelfId: string; quantity: number } {
-    return body &&
-           typeof body.bookId === 'string' &&
-           typeof body.shelfId === 'string' &&
-           typeof body.quantity === 'number' &&
-           body.quantity > 0;
+function isValidWarehouseRequest(body: unknown): body is { bookId: string; shelfId: string; quantity: number } {
+    if (!body || typeof body !== 'object') return false;
+    const request = body as { bookId?: unknown; shelfId?: unknown; quantity?: unknown };
+    return typeof request.bookId === 'string' &&
+           typeof request.shelfId === 'string' &&
+           typeof request.quantity === 'number' &&
+           request.quantity > 0;
 }
 
 export function createWarehouseRouter(warehouse: Warehouse) {

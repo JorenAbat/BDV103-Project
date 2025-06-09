@@ -1,8 +1,9 @@
 import Router from 'koa-router';
 import { OrderRepository } from '../domains/orders/domain.js';
+import { Context } from 'koa';
 
 // Helper function to validate order items
-function isValidOrderItems(items: any): items is Array<{ bookId: string; quantity: number }> {
+function isValidOrderItems(items: unknown): items is Array<{ bookId: string; quantity: number }> {
     if (!Array.isArray(items) || items.length === 0) {
         return false;
     }
@@ -16,7 +17,7 @@ function isValidOrderItems(items: any): items is Array<{ bookId: string; quantit
 }
 
 // Helper function to handle order errors
-function handleOrderError(error: unknown, ctx: any) {
+function handleOrderError(error: unknown, ctx: Context) {
     console.error('Order error:', error);
     
     if (error instanceof Error) {
