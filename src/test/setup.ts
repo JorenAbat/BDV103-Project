@@ -3,12 +3,8 @@ import { client } from '../db/mongodb.js';
 
 declare global {
   // eslint-disable-next-line no-var
-  var __MONGOINSTANCE: MongoMemoryServer;
-  // eslint-disable-next-line no-var
   var MONGO_URI: string;
 }
-
-let instance: MongoMemoryServer | null = null;
 
 function logDebug(message: string, data?: Record<string, unknown>) {
   console.log(`[MongoDB Debug] ${new Date().toISOString()} - ${message}`);
@@ -20,17 +16,9 @@ function logDebug(message: string, data?: Record<string, unknown>) {
 export async function setup() {
   logDebug('Starting setup...');
   try {
-    // Clean up any existing instance first
-    if (instance) {
-      logDebug('Found existing instance, cleaning up...');
-      await instance.stop();
-      instance = null;
-      logDebug('Existing instance cleaned up');
-    }
-
     logDebug('Creating new MongoDB Memory Server instance...');
     // Create new instance with explicit download options
-    instance = await MongoMemoryServer.create({
+    const instance = await MongoMemoryServer.create({
       binary: {
         version: '7.0.7',
         downloadDir: process.env.MONGOMS_DOWNLOAD_DIR || undefined,
@@ -49,9 +37,10 @@ export async function setup() {
     const uri = instance.getUri();
     logDebug('Got MongoDB URI', { uri });
     
-    global.__MONGOINSTANCE = instance;
     global.MONGO_URI = uri.slice(0, uri.lastIndexOf('/'));
     logDebug('Setup completed successfully');
+    
+    return instance;
   } catch (error: unknown) {
     const errorInfo = error instanceof Error 
       ? { message: error.message, stack: error.stack }
@@ -61,7 +50,7 @@ export async function setup() {
   }
 }
 
-export async function teardown() {
+export async function teardown(instance: MongoMemoryServer) {
   logDebug('Starting teardown...');
   try {
     if (instance) {
@@ -75,7 +64,6 @@ export async function teardown() {
       
       logDebug('Stopping MongoDB Memory Server...');
       await instance.stop();
-      instance = null;
       logDebug('MongoDB Memory Server stopped');
     } else {
       logDebug('No instance found to cleanup');

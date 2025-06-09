@@ -3,6 +3,7 @@ import { InMemoryWarehouse } from '../domains/warehouse/in-memory-adapter.js';
 import { MongoWarehouse } from '../domains/warehouse/mongodb-adapter.js';
 import { getBookDatabase } from './db.js';
 import { setup, teardown } from './setup.js';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
 
 function logTest(message: string, data?: Record<string, unknown>) {
   console.log(`[Warehouse Test] ${new Date().toISOString()} - ${message}`);
@@ -17,13 +18,14 @@ describe.each([
     ['MongoDB']
 ])('Warehouse (%s)', (name) => {
     let warehouse: InMemoryWarehouse | MongoWarehouse;
+    let mongoInstance: MongoMemoryServer;
     
     beforeAll(async () => {
         logTest('Starting beforeAll hook', { implementation: name });
         try {
             if (name === 'MongoDB') {
                 logTest('Setting up MongoDB');
-                await setup();
+                mongoInstance = await setup();
                 logTest('MongoDB setup completed');
             }
         } catch (error: unknown) {
@@ -40,7 +42,7 @@ describe.each([
         try {
             if (name === 'MongoDB') {
                 logTest('Running teardown');
-                await teardown();
+                await teardown(mongoInstance);
                 logTest('Teardown completed');
             }
         } catch (error: unknown) {

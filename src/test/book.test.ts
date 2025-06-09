@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { getBookDatabase, Book } from './db.js';
 import { setup, teardown } from './setup.js';
 import { MongoClient, Collection } from 'mongodb';
+import type { MongoMemoryServer } from 'mongodb-memory-server';
 
 function logTest(message: string, data?: Record<string, unknown>) {
   console.log(`[Book Test] ${new Date().toISOString()} - ${message}`);
@@ -21,12 +22,13 @@ describe('Book Database Tests', () => {
 
   let client: MongoClient;
   let books: Collection<Book>;
+  let mongoInstance: MongoMemoryServer;
 
   beforeAll(async () => {
     logTest('Starting beforeAll hook');
     try {
       logTest('Setting up MongoDB');
-      await setup();
+      mongoInstance = await setup();
       logTest('Setup completed');
       
       logTest('Getting database connection');
@@ -54,7 +56,7 @@ describe('Book Database Tests', () => {
       logTest('Database connection closed');
       
       logTest('Running teardown');
-      await teardown();
+      await teardown(mongoInstance);
       logTest('Teardown completed');
     } catch (error: unknown) {
       const errorInfo = error instanceof Error 
