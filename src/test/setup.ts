@@ -28,11 +28,22 @@ export async function setup() {
         version: '7.0.7',
         downloadDir: CACHE_DIR,
         checkMD5: false,
-        systemBinary: process.env.MONGOMS_SYSTEM_BINARY
+        systemBinary: process.env.MONGOMS_SYSTEM_BINARY,
+        // Add these options for better GitHub Actions compatibility
+        platform: 'linux',
+        arch: 'x64',
+        os: {
+          os: 'linux',
+          dist: 'ubuntu',
+          release: '22.04'
+        }
       },
       instance: {
         storageEngine: 'wiredTiger',
-        args: ['--quiet']
+        args: ['--quiet'],
+        // Add these options to prevent timeouts
+        port: 0, // Let the system assign a random port
+        ip: '127.0.0.1'
       }
     });
     logDebug('MongoDB Memory Server instance created', { state: instance.state });

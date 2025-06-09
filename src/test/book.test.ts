@@ -46,7 +46,7 @@ describe('Book Database Tests', () => {
       logTest('beforeAll hook failed', errorInfo);
       throw error;
     }
-  });
+  }, 30000);
 
   afterAll(async () => {
     logTest('Starting afterAll hook');
@@ -61,7 +61,7 @@ describe('Book Database Tests', () => {
       logTest('afterAll hook failed', errorInfo);
       throw error;
     }
-  });
+  }, 30000);
 
   it('should insert and retrieve a book', async () => {
     logTest('Starting insert and retrieve test');

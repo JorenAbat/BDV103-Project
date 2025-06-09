@@ -41,7 +41,7 @@ describe('Integration Tests', () => {
             logTest('beforeAll hook failed', errorInfo);
             throw error;
         }
-    });
+    }, 30000);
 
     afterAll(async () => {
         logTest('Starting afterAll hook');
@@ -60,7 +60,7 @@ describe('Integration Tests', () => {
             logTest('afterAll hook failed', errorInfo);
             throw error;
         }
-    });
+    }, 30000);
 
     beforeEach(async () => {
         logTest('Starting beforeEach hook');

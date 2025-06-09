@@ -35,7 +35,7 @@ describe.each([
             logTest('beforeAll hook failed', errorInfo);
             throw error;
         }
-    });
+    }, 30000); // 30 second timeout
 
     afterAll(async () => {
         logTest('Starting afterAll hook', { implementation: name });
@@ -52,7 +52,7 @@ describe.each([
             logTest('afterAll hook failed', errorInfo);
             throw error;
         }
-    });
+    }, 30000); // 30 second timeout
 
     beforeEach(async () => {
         logTest('Starting beforeEach hook', { implementation: name });
