@@ -4,6 +4,7 @@ import { MongoWarehouse } from '../domains/warehouse/mongodb-adapter.js';
 import { getBookDatabase } from './db.js';
 import { setup, teardown } from './setup.js';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { client } from '../db/mongodb.js';
 
 // Test both in-memory and MongoDB implementations
 describe.each([
@@ -23,7 +24,8 @@ describe.each([
         if (name === 'MongoDB') {
             await teardown(mongoInstance);
         }
-    });
+        await client.close();
+    }, 30000);
 
     beforeEach(async () => {
         if (name === 'MongoDB') {

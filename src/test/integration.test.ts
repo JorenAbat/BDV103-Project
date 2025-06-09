@@ -17,13 +17,13 @@ describe('Integration Tests', () => {
         mongoInstance = await setup();
         await client.connect();
         server = await startServer();
-    });
+    }, 30000);
 
     afterAll(async () => {
         await teardown(mongoInstance);
         await client.close();
         server?.close();
-    });
+    }, 30000);
 
     beforeEach(async () => {
         await fetch(`${API_BASE_URL}/test/clear-db`, { method: 'POST' });

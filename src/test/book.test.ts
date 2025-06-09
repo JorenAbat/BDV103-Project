@@ -28,7 +28,7 @@ describe('Book Database Tests', () => {
   afterAll(async () => {
     await client.close();
     await teardown(mongoInstance);
-  });
+  }, 30000);
 
   it('should insert and retrieve a book', async () => {
     await books.deleteMany({});

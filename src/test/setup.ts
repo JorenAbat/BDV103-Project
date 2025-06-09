@@ -28,9 +28,16 @@ export async function setup() {
 
 export async function teardown(instance: MongoMemoryServer) {
   if (instance) {
-    // Drop the entire database to ensure a clean state
-    const db = client.db();
-    await db.dropDatabase();
-    await instance.stop();
+    try {
+      // Ensure client is connected before dropping database
+      await client.connect();
+      // Drop the entire database to ensure a clean state
+      const db = client.db();
+      await db.dropDatabase();
+      await instance.stop();
+    } catch (error) {
+      console.error('Error during teardown:', error);
+      throw error;
+    }
   }
 } 
