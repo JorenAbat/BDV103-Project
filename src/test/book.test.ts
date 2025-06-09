@@ -1,111 +1,83 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { getBookDatabase, Book } from './db.js';
 import { setup, teardown } from './setup.js';
-import { MongoClient, Collection } from 'mongodb';
+import { client } from '../db/mongodb.js';
+import type { Book } from '../domains/book-listing/domain.js';
 
-function logTest(message: string, data?: Record<string, unknown>) {
-  console.log(`[Book Test] ${new Date().toISOString()} - ${message}`);
-  if (data) {
-    console.log(JSON.stringify(data, null, 2));
-  }
-}
+describe('Book Tests', () => {
+    beforeAll(async () => {
+        await setup();
+        await client.connect();
+    });
 
-describe('Book Database Tests', () => {
-  const sampleBook: Book = {
-    title: 'Test Book',
-    author: 'Test Author',
-    isbn: '1234567890',
-    price: 29.99,
-    quantity: 10
-  };
+    afterAll(async () => {
+        await client.close();
+        await teardown();
+    });
 
-  let client: MongoClient;
-  let books: Collection<Book>;
+    it('should insert and retrieve a book', async () => {
+        const book: Book = {
+            id: 'book-001',
+            title: 'Test Book',
+            author: 'Test Author',
+            description: 'A test book',
+            price: 19.99
+        };
 
-  beforeAll(async () => {
-    logTest('Starting beforeAll hook');
-    try {
-      logTest('Setting up MongoDB');
-      await setup();
-      logTest('Setup completed');
-      
-      logTest('Getting database connection');
-      const db = getBookDatabase();
-      client = db.client;
-      books = db.books;
-      
-      logTest('Connecting to database');
-      await client.connect();
-      logTest('Database connected successfully');
-    } catch (error: unknown) {
-      const errorInfo = error instanceof Error 
-        ? { message: error.message, stack: error.stack }
-        : { error: String(error) };
-      logTest('beforeAll hook failed', errorInfo);
-      throw error;
-    }
-  });
+        const db = await client.db();
+        const collection = db.collection('books');
+        await collection.insertOne(book);
 
-  afterAll(async () => {
-    logTest('Starting afterAll hook');
-    try {
-      logTest('Closing database connection');
-      await client.close();
-      logTest('Database connection closed');
-      
-      logTest('Running teardown');
-      await teardown();
-      logTest('Teardown completed');
-    } catch (error: unknown) {
-      const errorInfo = error instanceof Error 
-        ? { message: error.message, stack: error.stack }
-        : { error: String(error) };
-      logTest('afterAll hook failed', errorInfo);
-      throw error;
-    }
-  });
+        const retrieved = await collection.findOne({ id: book.id });
+        expect(retrieved).toEqual(book);
+    });
 
-  it('should insert and retrieve a book', async () => {
-    logTest('Starting insert and retrieve test');
-    await books.deleteMany({});
-    const result = await books.insertOne(sampleBook);
-    expect(result.acknowledged).toBe(true);
-    const retrievedBook = await books.findOne({ isbn: sampleBook.isbn });
-    expect(retrievedBook).toMatchObject(sampleBook);
-    logTest('Insert and retrieve test completed');
-  });
+    it('should return null for non-existent book', async () => {
+        const db = await client.db();
+        const collection = db.collection('books');
+        const book = await collection.findOne({ id: 'non-existent' });
+        expect(book).toBeNull();
+    });
 
-  it('should not find a non-existent book', async () => {
-    logTest('Starting non-existent book test');
-    await books.deleteMany({});
-    const nonExistentBook = await books.findOne({ isbn: 'nonexistent' });
-    expect(nonExistentBook).toBeNull();
-    logTest('Non-existent book test completed');
-  });
+    it('should update a book', async () => {
+        const book: Book = {
+            id: 'book-002',
+            title: 'Original Title',
+            author: 'Original Author',
+            description: 'Original description',
+            price: 29.99
+        };
 
-  it('should update a book', async () => {
-    logTest('Starting update book test');
-    await books.deleteMany({});
-    await books.insertOne(sampleBook);
-    const updatedQuantity = 20;
-    await books.updateOne(
-      { isbn: sampleBook.isbn },
-      { $set: { quantity: updatedQuantity } }
-    );
-    const updatedBook = await books.findOne({ isbn: sampleBook.isbn });
-    expect(updatedBook?.quantity).toBe(updatedQuantity);
-    logTest('Update book test completed');
-  });
+        const db = await client.db();
+        const collection = db.collection('books');
+        await collection.insertOne(book);
 
-  it('should delete a book', async () => {
-    logTest('Starting delete book test');
-    await books.deleteMany({});
-    await books.insertOne(sampleBook);
-    const deleteResult = await books.deleteOne({ isbn: sampleBook.isbn });
-    expect(deleteResult.acknowledged).toBe(true);
-    expect(deleteResult.deletedCount).toBe(1);
-    const deletedBook = await books.findOne({ isbn: sampleBook.isbn });
-    expect(deletedBook).toBeNull();
-    logTest('Delete book test completed');
-  });
+        const updatedBook = { 
+            ...book, 
+            title: 'Updated Title', 
+            description: 'Updated description',
+            price: 39.99 
+        };
+        await collection.updateOne({ id: book.id }, { $set: updatedBook });
+
+        const retrieved = await collection.findOne({ id: book.id });
+        expect(retrieved).toEqual(updatedBook);
+    });
+
+    it('should delete a book', async () => {
+        const book: Book = {
+            id: 'book-003',
+            title: 'To Delete',
+            author: 'Test Author',
+            description: 'A book to delete',
+            price: 9.99
+        };
+
+        const db = await client.db();
+        const collection = db.collection('books');
+        await collection.insertOne(book);
+
+        await collection.deleteOne({ id: book.id });
+        const retrieved = await collection.findOne({ id: book.id });
+        expect(retrieved).toBeNull();
+    });
 }); 

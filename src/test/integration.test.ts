@@ -7,81 +7,28 @@ import { client } from '../db/mongodb.js';
 import { startServer } from '../server.js';
 import type { Server } from 'http';
 
-function logTest(message: string, data?: Record<string, unknown>) {
-  console.log(`[Integration Test] ${new Date().toISOString()} - ${message}`);
-  if (data) {
-    console.log(JSON.stringify(data, null, 2));
-  }
-}
-
 const API_BASE_URL = 'http://localhost:3000';
 let server: Server;
 
 describe('Integration Tests', () => {
     beforeAll(async () => {
-        logTest('Starting beforeAll hook');
-        try {
-            logTest('Setting up MongoDB');
-            await setup();
-            logTest('MongoDB setup completed');
-
-            logTest('Connecting to database');
-            await client.connect();
-            logTest('Database connected');
-
-            logTest('Starting server');
-            server = await startServer();
-            logTest('Server started');
-        } catch (error: unknown) {
-            const errorInfo = error instanceof Error 
-                ? { message: error.message, stack: error.stack }
-                : { error: String(error) };
-            logTest('beforeAll hook failed', errorInfo);
-            throw error;
-        }
+        await setup();
+        await client.connect();
+        server = await startServer();
     });
 
     afterAll(async () => {
-        logTest('Starting afterAll hook');
-        try {
-            logTest('Running teardown');
-            await teardown();
-            logTest('Teardown completed');
-
-            logTest('Closing database connection');
-            await client.close();
-            logTest('Database connection closed');
-
-            logTest('Closing server');
-            server?.close();
-            logTest('Server closed');
-        } catch (error: unknown) {
-            const errorInfo = error instanceof Error 
-                ? { message: error.message, stack: error.stack }
-                : { error: String(error) };
-            logTest('afterAll hook failed', errorInfo);
-            throw error;
-        }
+        await teardown();
+        await client.close();
+        server?.close();
     });
 
     beforeEach(async () => {
-        logTest('Starting beforeEach hook');
-        try {
-            logTest('Clearing database');
-            await fetch(`${API_BASE_URL}/test/clear-db`, { method: 'POST' });
-            logTest('Database cleared');
-        } catch (error: unknown) {
-            const errorInfo = error instanceof Error 
-                ? { message: error.message, stack: error.stack }
-                : { error: String(error) };
-            logTest('beforeEach hook failed', errorInfo);
-            throw error;
-        }
+        await fetch(`${API_BASE_URL}/test/clear-db`, { method: 'POST' });
     });
 
     describe('Warehouse API', () => {
         it('should add and retrieve books from shelves', async () => {
-            logTest('Starting add and retrieve books test');
             await fetch(`${API_BASE_URL}/warehouse/add-books`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -100,11 +47,9 @@ describe('Integration Tests', () => {
                 shelfId: 'shelf-A',
                 quantity: 5
             });
-            logTest('Add and retrieve books test completed');
         });
 
         it('should handle invalid requests appropriately', async () => {
-            logTest('Starting invalid request test');
             const response = await fetch(`${API_BASE_URL}/warehouse/add-books`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -118,13 +63,11 @@ describe('Integration Tests', () => {
             expect(response.status).toBe(400);
             const error = await response.json() as { error: string };
             expect(error.error).toBeDefined();
-            logTest('Invalid request test completed');
         });
     });
 
     describe('Order API', () => {
         it('should create and fulfill orders', async () => {
-            logTest('Starting create and fulfill orders test');
             await fetch(`${API_BASE_URL}/warehouse/add-books`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -149,11 +92,9 @@ describe('Integration Tests', () => {
             const locationsResponse = await fetch(`${API_BASE_URL}/warehouse/books/book-001/locations`);
             const locations = await locationsResponse.json() as BookLocation[];
             expect(locations[0].quantity).toBe(3);
-            logTest('Create and fulfill orders test completed');
         });
 
         it('should handle invalid order requests', async () => {
-            logTest('Starting invalid order test');
             const response = await fetch(`${API_BASE_URL}/orders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -165,13 +106,11 @@ describe('Integration Tests', () => {
             expect(response.status).toBe(400);
             const error = await response.json() as { error: string };
             expect(error.error).toBeDefined();
-            logTest('Invalid order test completed');
         });
     });
 
     describe('Frontend-Backend Integration', () => {
         it('should list books with stock information', async () => {
-            logTest('Starting list books test');
             await fetch(`${API_BASE_URL}/warehouse/add-books`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -195,11 +134,9 @@ describe('Integration Tests', () => {
             const books = await response.json();
 
             expect(books).toBeInstanceOf(Array);
-            logTest('List books test completed');
         });
 
         it('should show correct stock levels when ordering', async () => {
-            logTest('Starting stock levels test');
             await fetch(`${API_BASE_URL}/warehouse/add-books`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -224,7 +161,6 @@ describe('Integration Tests', () => {
             const locationsResponse = await fetch(`${API_BASE_URL}/warehouse/books/book-001/locations`);
             const locations = await locationsResponse.json() as BookLocation[];
             expect(locations[0].quantity).toBe(3);
-            logTest('Stock levels test completed');
         });
     });
 }); 
