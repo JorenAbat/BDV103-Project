@@ -1,5 +1,7 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { client } from '../db/mongodb.js';
+import path from 'path';
+import os from 'os';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -13,15 +15,18 @@ function logDebug(message: string, data?: Record<string, unknown>) {
   }
 }
 
+// Create a unique cache directory for each test run
+const CACHE_DIR = path.join(os.tmpdir(), `mongodb-binaries-${Date.now()}`);
+
 export async function setup() {
   logDebug('Starting setup...');
   try {
     logDebug('Creating new MongoDB Memory Server instance...');
-    // Create new instance with explicit download options and cache directory
+    // Create new instance with explicit download options and unique cache directory
     const instance = await MongoMemoryServer.create({
       binary: {
         version: '7.0.7',
-        downloadDir: process.env.MONGOMS_DOWNLOAD_DIR || '/tmp/mongodb-binaries',
+        downloadDir: CACHE_DIR,
         checkMD5: false,
         systemBinary: process.env.MONGOMS_SYSTEM_BINARY
       },
