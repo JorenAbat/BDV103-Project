@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { getBookDatabase, Book } from './db.js';
 import { setup, teardown } from './setup.js';
-import { MongoClient, Collection } from 'mongodb';
+import { Collection } from 'mongodb';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
 
 describe('Book Database Tests', () => {
@@ -13,20 +13,16 @@ describe('Book Database Tests', () => {
     quantity: 10
   };
 
-  let client: MongoClient;
   let books: Collection<Book>;
   let mongoInstance: MongoMemoryServer;
 
   beforeAll(async () => {
     mongoInstance = await setup();
     const db = getBookDatabase();
-    client = db.client;
     books = db.books;
-    await client.connect();
   });
 
   afterAll(async () => {
-    await client.close();
     await teardown(mongoInstance);
   }, 30000);
 

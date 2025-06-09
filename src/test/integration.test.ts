@@ -3,7 +3,6 @@ import fetch from 'node-fetch';
 import { BookLocation } from '../domains/warehouse/domain.js';
 import { Order } from '../domains/orders/domain.js';
 import { setup, teardown } from './setup.js';
-import { client } from '../db/mongodb.js';
 import { startServer } from '../server.js';
 import type { Server } from 'http';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
@@ -15,13 +14,11 @@ let mongoInstance: MongoMemoryServer;
 describe('Integration Tests', () => {
     beforeAll(async () => {
         mongoInstance = await setup();
-        await client.connect();
         server = await startServer();
     }, 30000);
 
     afterAll(async () => {
         await teardown(mongoInstance);
-        await client.close();
         server?.close();
     }, 30000);
 
