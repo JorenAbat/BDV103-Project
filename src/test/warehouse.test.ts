@@ -17,7 +17,7 @@ describe.each([
         if (name === 'MongoDB') {
             mongoInstance = await setup();
         }
-    });
+    }, 30000);
 
     afterAll(async () => {
         if (name === 'MongoDB') {
