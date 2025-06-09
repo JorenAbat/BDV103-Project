@@ -4,15 +4,15 @@ import { BookLocation } from '../domains/warehouse/domain.js';
 import { Order } from '../domains/orders/domain.js';
 import { setup, teardown } from './setup.js';
 
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
 
 describe('Integration Tests', () => {
     beforeAll(async () => {
         await setup();
-    });
+    }, 30000);
     afterAll(async () => {
         await teardown();
-    });
+    }, 30000);
 
     beforeEach(async () => {
         await fetch(`${API_BASE_URL}/test/clear-db`, { method: 'POST' });

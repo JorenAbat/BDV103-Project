@@ -48,7 +48,7 @@ app.use(createOrderRouter(orderSystem).routes());
 app.use(createOrderRouter(orderSystem).allowedMethods());
 
 // The port number our server will listen on
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Function to start our server
 async function startServer() {
@@ -58,7 +58,7 @@ async function startServer() {
         
         // Start listening for incoming requests
         app.listen(PORT, () => {
-            console.log(`Server running on http://localhost:${PORT}`);
+            console.log(`Server running on port ${PORT}`);
         });
     } catch (error) {
         console.error('Failed to start server:', error);
