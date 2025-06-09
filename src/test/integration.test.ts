@@ -6,7 +6,6 @@ import { setup, teardown } from './setup.js';
 import { client } from '../db/mongodb.js';
 import { startServer } from '../server.js';
 import type { Server } from 'http';
-import type { MongoMemoryServer } from 'mongodb-memory-server';
 
 function logTest(message: string, data?: Record<string, unknown>) {
   console.log(`[Integration Test] ${new Date().toISOString()} - ${message}`);
@@ -17,14 +16,13 @@ function logTest(message: string, data?: Record<string, unknown>) {
 
 const API_BASE_URL = 'http://localhost:3000';
 let server: Server;
-let mongoInstance: MongoMemoryServer;
 
 describe('Integration Tests', () => {
     beforeAll(async () => {
         logTest('Starting beforeAll hook');
         try {
             logTest('Setting up MongoDB');
-            mongoInstance = await setup();
+            await setup();
             logTest('MongoDB setup completed');
 
             logTest('Connecting to database');
@@ -41,14 +39,18 @@ describe('Integration Tests', () => {
             logTest('beforeAll hook failed', errorInfo);
             throw error;
         }
-    }, 30000);
+    });
 
     afterAll(async () => {
         logTest('Starting afterAll hook');
         try {
             logTest('Running teardown');
-            await teardown(mongoInstance);
+            await teardown();
             logTest('Teardown completed');
+
+            logTest('Closing database connection');
+            await client.close();
+            logTest('Database connection closed');
 
             logTest('Closing server');
             server?.close();
@@ -60,7 +62,7 @@ describe('Integration Tests', () => {
             logTest('afterAll hook failed', errorInfo);
             throw error;
         }
-    }, 30000);
+    });
 
     beforeEach(async () => {
         logTest('Starting beforeEach hook');

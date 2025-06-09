@@ -5,7 +5,6 @@ import { InMemoryWarehouse } from '../domains/warehouse/in-memory-adapter.js';
 import { MongoWarehouse } from '../domains/warehouse/mongodb-adapter.js';
 import { getBookDatabase } from './db.js';
 import { setup, teardown } from './setup.js';
-import type { MongoMemoryServer } from 'mongodb-memory-server';
 
 function logTest(message: string, data?: Record<string, unknown>) {
   console.log(`[Orders Test] ${new Date().toISOString()} - ${message}`);
@@ -21,14 +20,13 @@ describe.each([
 ])('Order System (%s)', (name) => {
     let warehouse: InMemoryWarehouse | MongoWarehouse;
     let orderProcessor: InMemoryOrderProcessor | MongoOrderProcessor;
-    let mongoInstance: MongoMemoryServer;
 
     beforeAll(async () => {
         logTest('Starting beforeAll hook', { implementation: name });
         try {
             if (name === 'MongoDB') {
                 logTest('Setting up MongoDB');
-                mongoInstance = await setup();
+                await setup();
                 logTest('MongoDB setup completed');
             }
         } catch (error: unknown) {
@@ -38,14 +36,14 @@ describe.each([
             logTest('beforeAll hook failed', errorInfo);
             throw error;
         }
-    }, 30000); // 30 second timeout
+    });
 
     afterAll(async () => {
         logTest('Starting afterAll hook', { implementation: name });
         try {
             if (name === 'MongoDB') {
                 logTest('Running teardown');
-                await teardown(mongoInstance);
+                await teardown();
                 logTest('Teardown completed');
             }
         } catch (error: unknown) {
@@ -55,7 +53,7 @@ describe.each([
             logTest('afterAll hook failed', errorInfo);
             throw error;
         }
-    }, 30000); // 30 second timeout
+    });
 
     beforeEach(async () => {
         logTest('Starting beforeEach hook', { implementation: name });
