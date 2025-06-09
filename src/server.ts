@@ -1,4 +1,4 @@
-// Import the packages we need to run our server
+// Import the tools we need
 import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import qs from 'koa-qs';
@@ -10,68 +10,70 @@ import { createOrderRouter } from './routes/orders.js';
 import { MongoOrderProcessor } from './domains/orders/mongodb-adapter.js';
 import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
 
-// Create our web server using Koa
-// Koa is a modern web framework for Node.js
+// Create a new Koa application
 const app = new Koa();
 
-// Set up CORS (Cross-Origin Resource Sharing)
-// This allows other websites to make requests to our API
-// In development, we allow requests from any website
+// Set up CORS to allow requests from any website
+// This is important for development, but should be restricted in production
 app.use(cors({
-    origin: '*',
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization', 'Accept'],
-    exposeHeaders: ['WWW-Authenticate', 'Server-Authorization'],
-    credentials: true
+    origin: '*',  // Allow requests from any website
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],  // Allow these HTTP methods
+    allowHeaders: ['Content-Type', 'Authorization', 'Accept'],  // Allow these headers
+    exposeHeaders: ['WWW-Authenticate', 'Server-Authorization'],  // Allow these response headers
+    credentials: true  // Allow cookies and authentication headers
 }));
 
-// Set up request parsing
-// This allows us to read JSON data from incoming requests
+// Set up query string parsing
+// This allows us to handle URL parameters like ?filters=...
 qs(app);
+
+// Set up body parsing
+// This allows us to read JSON data from requests
 app.use(bodyParser({ 
-    enableTypes: ['json'],
-    jsonLimit: '1mb'
+    enableTypes: ['json'],  // Only parse JSON requests
+    jsonLimit: '1mb'  // Limit JSON size to 1MB
 }));
 
 // Create our database systems
-// We'll use MongoDB to store our data
 const warehouse = new MongoWarehouse(client, 'bookstore');
 const orderSystem = new MongoOrderProcessor(client, 'bookstore', warehouse);
 
-// Set up our API routes
-// Each router handles a different part of our system
+// Set up our routes
+// This connects our API endpoints to the server
 app.use(routes.routes());
 app.use(routes.allowedMethods());
 app.use(createWarehouseRouter(warehouse).routes());
-app.use(createWarehouseRouter(warehouse).allowedMethods());
 app.use(createOrderRouter(orderSystem).routes());
-app.use(createOrderRouter(orderSystem).allowedMethods());
 
-// The port number our server will listen on
-const PORT = process.env.PORT || 3000;
+// The port our server will run on
+const PORT = 3000;
 
-// Function to start our server
-async function startServer() {
+// Function to start the server
+export async function startServer() {
     try {
-        // Connect to the MongoDB database
+        // First, connect to MongoDB
         await connectToMongo();
         
-        // Start listening for incoming requests
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
+        // Then, start listening for requests
+        const server = app.listen(PORT, () => {
+            console.log(`Server running on http://localhost:${PORT}`);
         });
+        return server;
     } catch (error) {
+        // If something goes wrong, log the error and stop the server
         console.error('Failed to start server:', error);
         process.exit(1);
     }
 }
 
 // Handle server shutdown gracefully
-// This ensures we close our database connection properly
+// This ensures we close the MongoDB connection when the server stops
 process.on('SIGINT', async () => {
     await closeMongoConnection();
     process.exit(0);
 });
 
-// Start the server
-startServer();
+// Start the server if this file is run directly
+if (require.main === module) {
+    startServer();
+}
