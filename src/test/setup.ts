@@ -17,12 +17,18 @@ export async function setup() {
   logDebug('Starting setup...');
   try {
     logDebug('Creating new MongoDB Memory Server instance...');
-    // Create new instance with explicit download options
+    // Create new instance with explicit download options for CI environment
     const instance = await MongoMemoryServer.create({
       binary: {
         version: '7.0.7',
-        downloadDir: process.env.MONGOMS_DOWNLOAD_DIR || undefined,
-        checkMD5: false
+        downloadDir: process.env.CI ? '/tmp/mongodb-binaries' : undefined,
+        checkMD5: false,
+        systemBinary: process.env.CI ? '/usr/bin/mongod' : undefined
+      },
+      instance: {
+        port: 0, // Random port
+        ip: '127.0.0.1',
+        dbName: 'test'
       }
     });
     logDebug('MongoDB Memory Server instance created', { state: instance.state });
