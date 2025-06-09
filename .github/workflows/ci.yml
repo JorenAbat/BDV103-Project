@@ -39,16 +39,6 @@ jobs:
           echo "=== Tests Completed ==="
         continue-on-error: true
 
-      - name: Upload test logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-logs
-          path: |
-            ~/.cache/mongodb-binaries
-            /tmp/mongodb-memory-server*
-          if-no-files-found: warn
-
   lint:
     name: Run Linter
     runs-on: ubuntu-latest
