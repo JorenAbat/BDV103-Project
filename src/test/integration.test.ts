@@ -50,10 +50,6 @@ describe('Integration Tests', () => {
             await teardown(mongoInstance);
             logTest('Teardown completed');
 
-            logTest('Closing database connection');
-            await client.close();
-            logTest('Database connection closed');
-
             logTest('Closing server');
             server?.close();
             logTest('Server closed');

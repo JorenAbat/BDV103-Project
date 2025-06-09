@@ -66,12 +66,18 @@ export async function teardown(instance: MongoMemoryServer) {
     if (instance) {
       logDebug('Found instance to cleanup');
       
-      // Drop the entire database to ensure a clean state
+      // First drop the database
       logDebug('Dropping database...');
       const db = client.db();
       await db.dropDatabase();
       logDebug('Database dropped');
       
+      // Then close client connections
+      logDebug('Closing client connections...');
+      await client.close();
+      logDebug('Client connections closed');
+      
+      // Finally stop the MongoDB instance
       logDebug('Stopping MongoDB Memory Server...');
       await instance.stop();
       logDebug('MongoDB Memory Server stopped');

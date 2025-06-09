@@ -51,10 +51,6 @@ describe('Book Database Tests', () => {
   afterAll(async () => {
     logTest('Starting afterAll hook');
     try {
-      logTest('Closing database connection');
-      await client.close();
-      logTest('Database connection closed');
-      
       logTest('Running teardown');
       await teardown(mongoInstance);
       logTest('Teardown completed');
