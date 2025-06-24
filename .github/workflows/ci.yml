@@ -29,6 +29,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate tsoa routes (with ESM patch)
+        run: npm run tsoa:routes
+
       - name: Run tests
         env:
           MONGOMS_DOWNLOAD_DIR: ~/.cache/mongodb-binaries
@@ -55,9 +58,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate OpenAPI spec and routes
-        run: npx tsoa spec-and-routes
-
       - name: Run linting
         run: npm run lint
 
@@ -77,8 +77,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate OpenAPI spec and routes
-        run: npx tsoa spec-and-routes
-
-      - name: Run type checking
+      - name: Run type checking (with tsoa routes and ESM patch)
         run: npm run type-check 
