@@ -1,85 +1,14 @@
-// Import the tools we need
-import Koa from 'koa';
-import bodyParser from 'koa-bodyparser';
-import qs from 'koa-qs';
-import cors from '@koa/cors';
-import Router from '@koa/router';
-import routes from './routes.js';
-import { connectToMongo, closeMongoConnection, client } from './db/mongodb.js';
-import { createWarehouseRouter } from './routes/warehouse.js';
-import { createOrderRouter } from './routes/orders.js';
-import { MongoOrderProcessor } from './domains/orders/mongodb-adapter.js';
-import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
-
-// Import generated routes and swagger spec
-import { RegisterRoutes } from '../build/tsoa-routes.js';
-import { koaSwagger } from 'koa2-swagger-ui';
-
-// Create a new Koa application
-const app = new Koa();
-
-// Set up CORS to allow requests from any website
-// This is important for development, but should be restricted in production
-app.use(cors({
-    origin: '*',  // Allow requests from any website
-    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],  // Allow these HTTP methods
-    allowHeaders: ['Content-Type', 'Authorization', 'Accept'],  // Allow these headers
-    exposeHeaders: ['WWW-Authenticate', 'Server-Authorization'],  // Allow these response headers
-    credentials: true  // Allow cookies and authentication headers
-}));
-
-// Set up query string parsing
-// This allows us to handle URL parameters like ?filters=...
-qs(app);
-
-// Set up body parsing
-// This allows us to read JSON data from requests
-app.use(bodyParser({ 
-    enableTypes: ['json'],  // Only parse JSON requests
-    jsonLimit: '1mb'  // Limit JSON size to 1MB
-}));
-
-// Add Swagger documentation
-app.use(koaSwagger({
-    routePrefix: '/docs',
-    specPrefix: '/docs/spec',
-    exposeSpec: true,
-    swaggerOptions: {
-        url: '/docs/spec'
-    }
-}));
-
-// Create our database systems
-const warehouse = new MongoWarehouse(client, 'bookstore');
-const orderSystem = new MongoOrderProcessor(client, 'bookstore', warehouse);
-
-// Set up our routes
-// This connects our API endpoints to the server
-app.use(routes.routes());
-app.use(routes.allowedMethods());
-app.use(createWarehouseRouter(warehouse).routes());
-app.use(createOrderRouter(orderSystem).routes());
-
-// Create router for tsoa routes and register them
-const tsoaRouter = new Router();
-RegisterRoutes(tsoaRouter);
-app.use(tsoaRouter.routes());
-app.use(tsoaRouter.allowedMethods());
-
-// The port our server will run on
-const PORT = 3000;
+import { createServer } from './server-launcher.js';
+import { closeMongoConnection } from './db/mongodb.js';
 
 // Function to start the server
 export async function startServer() {
     try {
-        // First, connect to MongoDB
-        await connectToMongo();
+        // Start the server on port 3000
+        const server = await createServer(3000);
         
-        // Then, start listening for requests
-        const server = app.listen(PORT, () => {
-            console.log(`Server running on http://localhost:${PORT}`);
-            console.log(`Swagger docs available at http://localhost:${PORT}/docs`);
-        });
+        console.log(`Server running on http://localhost:3000`);
+        console.log(`Swagger docs available at http://localhost:3000/docs`);
 
         // Handle server shutdown gracefully
         process.on('SIGINT', async () => {
@@ -93,7 +22,6 @@ export async function startServer() {
 
         return server;
     } catch (error) {
-        // If something goes wrong, log the error and stop the server
         console.error('Failed to start server:', error);
         process.exit(1);
     }
