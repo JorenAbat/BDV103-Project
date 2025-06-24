@@ -9,7 +9,8 @@
         "lint": "eslint . --ext .ts",
         "fix-lint": "eslint . --ext .ts --fix",
         "fmt": "eslint . --ext .ts --fix",
-        "type-check": "tsc --noEmit",
+        "tsoa:routes": "npx tsoa routes && node fix-tsoa-imports.js",
+        "type-check": "npm run tsoa:routes && tsc --noEmit",
         "test": "vitest",
         "test:ci": "vitest run"
     },
