@@ -8,6 +8,8 @@
   },
   "routes": {
     "routesDir": "build",
+    "routesFileName": "tsoa-routes.ts",
     "middleware": "koa"
-  }
+  },
+  "esModuleInterop": true
 } 

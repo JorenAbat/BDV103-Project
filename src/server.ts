@@ -12,7 +12,7 @@ import { MongoOrderProcessor } from './domains/orders/mongodb-adapter.js';
 import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
 
 // Import generated routes and swagger spec
-import { RegisterRoutes } from '../build/routes.js';
+import { RegisterRoutes } from '../build/tsoa-routes.js';
 import { koaSwagger } from 'koa2-swagger-ui';
 
 // Create a new Koa application
