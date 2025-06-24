@@ -20,12 +20,16 @@ export function setupApiTests(): void {
 
     afterAll(async () => {
         // Clean up MongoDB connection after all tests
-        await closeMongoConnection();
+        // Only close if we're not using in-memory MongoDB
+        if (typeof global.MONGO_URI === 'undefined') {
+            await closeMongoConnection();
+        }
     });
 
     beforeEach(async () => {
         // beforeEach sets up the server on a random available port and provides it's address as well as a close function that turns the server off
-        server = await createServer(0); // Port 0 = random available port
+        // Skip MongoDB connection for tests since we're using in-memory MongoDB
+        server = await createServer(0, true); // Port 0 = random available port, skipMongoConnection = true
         
         const address = server.address();
         if (address && typeof address === 'object') {

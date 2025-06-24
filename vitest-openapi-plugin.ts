@@ -18,13 +18,20 @@ async function generateOpenApi (): Promise<void> {
 // We want to keep track of whether the generation has finished, and the currently active promise we can wait on.
 // keeping these within a const ensures we don't accidentally refer to an older promise, in case
 // multiple file changes cause the openapi generation to trigger in sequence
-const openApiReady: { promise: Promise<void>, ready: boolean } = { ready: false, promise: generateOpenApi() }
+const openApiReady: { promise: Promise<void>, ready: boolean, generating: boolean } = { 
+  ready: false, 
+  promise: generateOpenApi(),
+  generating: false
+}
 
 // We are exporting a vite plugin - since vitest just runs vite plugins under the hood
 export default {
   name: 'OpenApi Generation Plugin',
   // when the build starts, we want to wait until the initial generation of our client and routes is complete
-  buildStart: async () => { await openApiReady.promise; openApiReady.ready = true },
+  buildStart: async () => { 
+    await openApiReady.promise; 
+    openApiReady.ready = true 
+  },
   // whenever vitest tries to load a file, we want it to wait until there isn't an actively running generation process
   // and the files are ready
   load: async () => {
@@ -38,6 +45,12 @@ export default {
   // Whenever a file is changed, we mark our openapi as not being ready, start generating the routes & client,
   // and if no other generation processes started since - we can mark that we are ready
   watchChange: async () => {
+    // Prevent multiple simultaneous generations
+    if (openApiReady.generating) {
+      return
+    }
+    
+    openApiReady.generating = true
     openApiReady.ready = false
     const promise = generateOpenApi()
     openApiReady.promise = promise
@@ -45,5 +58,6 @@ export default {
     if (openApiReady.promise === promise) {
       openApiReady.ready = true
     }
+    openApiReady.generating = false
   }
 } 

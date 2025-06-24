@@ -15,7 +15,7 @@ import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
 import { RegisterRoutes } from '../build/tsoa-routes.js';
 import { koaSwagger } from 'koa2-swagger-ui';
 
-export async function createServer(port?: number): Promise<Server> {
+export async function createServer(port?: number, skipMongoConnection: boolean = false): Promise<Server> {
     // If no port number is provided – set it to '0'. That will force NodeJS to choose a random available port
     const serverPort = port ?? 0;
     
@@ -66,8 +66,10 @@ export async function createServer(port?: number): Promise<Server> {
     app.use(tsoaRouter.routes());
     app.use(tsoaRouter.allowedMethods());
 
-    // Connect to MongoDB
-    await connectToMongo();
+    // Connect to MongoDB only if not skipped (for tests)
+    if (!skipMongoConnection) {
+        await connectToMongo();
+    }
     
     // Return the result of the 'app.listen' call
     const server = app.listen(serverPort, () => {
