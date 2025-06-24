@@ -11,6 +11,8 @@
 
     "strict": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "downlevelIteration": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node16",
@@ -20,6 +22,8 @@
     ]
   },
   "exclude": [
+    "build",
+    "client",
     "build/**/*",
     "client/**/*",
     "node_modules/**/*"

@@ -10,7 +10,7 @@
         "lint": "npm run generate && eslint . --ext .ts",
         "fix-lint": "npm run generate && eslint . --ext .ts --fix",
         "fmt": "npm run generate && eslint . --ext .ts --fix",
-        "type-check": "npm run generate && tsc --noEmit src/**/*.ts",
+        "type-check": "npm run generate && tsc --noEmit",
         "test": "npm run generate && vitest",
         "test:ci": "npm run generate && vitest run"
     },
