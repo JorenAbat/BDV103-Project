@@ -18,5 +18,10 @@
     "types": [
       "vitest/importMeta"
     ]
-  }
+  },
+  "exclude": [
+    "build/**/*",
+    "client/**/*",
+    "node_modules/**/*"
+  ]
 }

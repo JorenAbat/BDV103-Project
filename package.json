@@ -10,8 +10,7 @@
         "lint": "npm run generate && eslint . --ext .ts",
         "fix-lint": "npm run generate && eslint . --ext .ts --fix",
         "fmt": "npm run generate && eslint . --ext .ts --fix",
-        "tsoa:routes": "npx tsoa routes && node fix-tsoa-imports.js",
-        "type-check": "npm run generate && tsc --noEmit",
+        "type-check": "npm run generate && tsc --noEmit src/**/*.ts",
         "test": "npm run generate && vitest",
         "test:ci": "npm run generate && vitest run"
     },
