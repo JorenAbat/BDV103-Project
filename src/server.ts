@@ -11,8 +11,9 @@ import { createOrderRouter } from './routes/orders.js';
 import { MongoOrderProcessor } from './domains/orders/mongodb-adapter.js';
 import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
 
-// Import generated routes
+// Import generated routes and swagger spec
 import { RegisterRoutes } from '../build/routes.js';
+import { koaSwagger } from 'koa2-swagger-ui';
 
 // Create a new Koa application
 const app = new Koa();
@@ -36,6 +37,16 @@ qs(app);
 app.use(bodyParser({ 
     enableTypes: ['json'],  // Only parse JSON requests
     jsonLimit: '1mb'  // Limit JSON size to 1MB
+}));
+
+// Add Swagger documentation
+app.use(koaSwagger({
+    routePrefix: '/docs',
+    specPrefix: '/docs/spec',
+    exposeSpec: true,
+    swaggerOptions: {
+        url: '/docs/spec'
+    }
 }));
 
 // Create our database systems
@@ -67,6 +78,7 @@ export async function startServer() {
         // Then, start listening for requests
         const server = app.listen(PORT, () => {
             console.log(`Server running on http://localhost:${PORT}`);
+            console.log(`Swagger docs available at http://localhost:${PORT}/docs`);
         });
 
         // Handle server shutdown gracefully
