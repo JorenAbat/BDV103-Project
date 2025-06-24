@@ -5,14 +5,15 @@
     "type": "module",
     "main": "index.js",
     "scripts": {
-        "start-server": "tsx src/server.ts",
-        "lint": "eslint . --ext .ts",
-        "fix-lint": "eslint . --ext .ts --fix",
-        "fmt": "eslint . --ext .ts --fix",
+        "generate": "./generate-openapi.sh",
+        "start-server": "npm run generate && tsx src/server.ts",
+        "lint": "npm run generate && eslint . --ext .ts",
+        "fix-lint": "npm run generate && eslint . --ext .ts --fix",
+        "fmt": "npm run generate && eslint . --ext .ts --fix",
         "tsoa:routes": "npx tsoa routes && node fix-tsoa-imports.js",
-        "type-check": "npm run tsoa:routes && tsc --noEmit",
-        "test": "vitest",
-        "test:ci": "vitest run"
+        "type-check": "npm run generate && tsc --noEmit",
+        "test": "npm run generate && vitest",
+        "test:ci": "npm run generate && vitest run"
     },
     "keywords": [],
     "author": "",

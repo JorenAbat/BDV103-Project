@@ -10,6 +10,13 @@ jobs:
   test:
     name: Run Tests
     runs-on: ubuntu-latest
+    
+    services:
+      mongodb:
+        image: mongo:6.0
+        ports:
+          - 27017:27017
+    
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -29,8 +36,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate tsoa routes (with ESM patch)
-        run: npm run tsoa:routes
+      - name: Generate OpenAPI spec and client SDK
+        run: npm run generate
 
       - name: Run tests
         env:
@@ -41,6 +48,12 @@ jobs:
           npm run test:ci
           echo "=== Tests Completed ==="
         continue-on-error: true
+
+      - name: Upload client SDK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-sdk
+          path: client/
 
   lint:
     name: Run Linter
@@ -57,6 +70,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate OpenAPI spec and client SDK
+        run: npm run generate
 
       - name: Run linting
         run: npm run lint
@@ -77,5 +93,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run type checking (with tsoa routes and ESM patch)
+      - name: Generate OpenAPI spec and client SDK
+        run: npm run generate
+
+      - name: Run type checking
         run: npm run type-check 
