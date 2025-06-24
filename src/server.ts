@@ -3,12 +3,16 @@ import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import qs from 'koa-qs';
 import cors from '@koa/cors';
+import Router from '@koa/router';
 import routes from './routes.js';
 import { connectToMongo, closeMongoConnection, client } from './db/mongodb.js';
 import { createWarehouseRouter } from './routes/warehouse.js';
 import { createOrderRouter } from './routes/orders.js';
 import { MongoOrderProcessor } from './domains/orders/mongodb-adapter.js';
 import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
+
+// Import generated routes
+import { RegisterRoutes } from '../build/routes.js';
 
 // Create a new Koa application
 const app = new Koa();
@@ -45,6 +49,12 @@ app.use(routes.allowedMethods());
 app.use(createWarehouseRouter(warehouse).routes());
 app.use(createOrderRouter(orderSystem).routes());
 
+// Create router for tsoa routes and register them
+const tsoaRouter = new Router();
+RegisterRoutes(tsoaRouter);
+app.use(tsoaRouter.routes());
+app.use(tsoaRouter.allowedMethods());
+
 // The port our server will run on
 const PORT = 3000;
 
@@ -78,6 +88,6 @@ export async function startServer() {
 }
 
 // Start the server if this file is run directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
     startServer();
 }

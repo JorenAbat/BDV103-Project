@@ -6,6 +6,8 @@
     "lib": ["es2023"],
     "module": "node16",
     "target": "es2022",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
 
     "strict": true,
     "esModuleInterop": true,
