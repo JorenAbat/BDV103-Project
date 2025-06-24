@@ -5,22 +5,31 @@ import cors from '@koa/cors';
 import Router from '@koa/router';
 import { Server } from 'http';
 import routes from './routes.js';
-import { connectToMongo, client } from './db/mongodb.js';
+import { connectToMongo } from './db/mongodb.js';
 import { createWarehouseRouter } from './routes/warehouse.js';
 import { createOrderRouter } from './routes/orders.js';
-import { MongoOrderProcessor } from './domains/orders/mongodb-adapter.js';
-import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
 
 // Import generated routes and swagger spec
 import { RegisterRoutes } from '../build/tsoa-routes.js';
 import { koaSwagger } from 'koa2-swagger-ui';
 
-export async function createServer(port?: number, skipMongoConnection: boolean = false): Promise<Server> {
+// Import database state interfaces and helpers
+import { AppDatabaseState } from './test/database-state.js';
+import { getDefaultDatabaseState } from './test/database-helpers.js';
+
+export async function createServer(
+    port?: number, 
+    skipMongoConnection: boolean = false,
+    randomizeDb: boolean = false
+): Promise<{ server: Server; state: AppDatabaseState }> {
     // If no port number is provided – set it to '0'. That will force NodeJS to choose a random available port
     const serverPort = port ?? 0;
     
-    // Create a new Koa application
-    const app = new Koa();
+    // Generate database name if randomization is enabled
+    const dbName = randomizeDb ? Math.floor(Math.random() * 100000).toString() : 'bookstore';
+    
+    // Create a new Koa application with proper typing for database state
+    const app = new Koa<AppDatabaseState>();
 
     // Set up CORS to allow requests from any website
     app.use(cors({
@@ -50,15 +59,20 @@ export async function createServer(port?: number, skipMongoConnection: boolean =
         }
     }));
 
-    // Create our database systems
-    const warehouse = new MongoWarehouse(client, 'bookstore');
-    const orderSystem = new MongoOrderProcessor(client, 'bookstore', warehouse);
+    // Create database state with the database name
+    const state = getDefaultDatabaseState(dbName);
+
+    // Add middleware to inject state object into Koa context
+    app.use(async (ctx, next): Promise<void> => {
+        ctx.state = state;
+        await next();
+    });
 
     // Set up our routes
     app.use(routes.routes());
     app.use(routes.allowedMethods());
-    app.use(createWarehouseRouter(warehouse).routes());
-    app.use(createOrderRouter(orderSystem).routes());
+    app.use(createWarehouseRouter(state.warehouse).routes());
+    app.use(createOrderRouter(state.orders).routes());
 
     // Create router for tsoa routes and register them
     const tsoaRouter = new Router();
@@ -71,7 +85,7 @@ export async function createServer(port?: number, skipMongoConnection: boolean =
         await connectToMongo();
     }
     
-    // Return the result of the 'app.listen' call
+    // Return the result of the 'app.listen' call along with the state
     const server = app.listen(serverPort, () => {
         const address = server.address();
         if (address && typeof address === 'object') {
@@ -79,5 +93,5 @@ export async function createServer(port?: number, skipMongoConnection: boolean =
         }
     });
     
-    return server;
+    return { server, state };
 } 

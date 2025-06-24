@@ -5,7 +5,7 @@ import { closeMongoConnection } from './db/mongodb.js';
 export async function startServer() {
     try {
         // Start the server on port 3000
-        const server = await createServer(3000);
+        const { server } = await createServer(3000);
         
         console.log(`Server running on http://localhost:3000`);
         console.log(`Swagger docs available at http://localhost:3000/docs`);

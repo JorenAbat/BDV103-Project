@@ -22,8 +22,8 @@ export interface BookDatabaseAccessor {
   books: Collection<Book>;
 }
 
-export function getBookDatabase(): BookDatabaseAccessor {
-  const database = global.TEST_CLIENT.db(Math.floor(Math.random() * 100000).toPrecision());
+export function getBookDatabase(dbName?: string): BookDatabaseAccessor {
+  const database = global.TEST_CLIENT.db(dbName ?? Math.floor(Math.random() * 100000).toString());
   const books = database.collection<Book>('books');
   return { client: global.TEST_CLIENT, database, books };
 } 
