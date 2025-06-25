@@ -7,7 +7,6 @@ import { Server } from 'http';
 import routes from './routes.js';
 import { connectToMongo } from './db/mongodb.js';
 import { createWarehouseRouter } from './routes/warehouse.js';
-import { createOrderRouter } from './routes/orders.js';
 
 // Import generated routes and swagger spec
 import { RegisterRoutes } from '../build/tsoa-routes.js';
@@ -49,13 +48,16 @@ export async function createServer(
         jsonLimit: '1mb'
     }));
 
+    // Dynamically import the swagger spec
+    const swaggerJson = (await import('../build/swagger.json', { assert: { type: 'json' } })).default;
+
     // Add Swagger documentation
     app.use(koaSwagger({
         routePrefix: '/docs',
         specPrefix: '/docs/spec',
         exposeSpec: true,
         swaggerOptions: {
-            url: '/docs/spec'
+            spec: swaggerJson
         }
     }));
 
@@ -72,7 +74,6 @@ export async function createServer(
     app.use(routes.routes());
     app.use(routes.allowedMethods());
     app.use(createWarehouseRouter(state.warehouse).routes());
-    app.use(createOrderRouter(state.orders).routes());
 
     // Create router for tsoa routes and register them
     const tsoaRouter = new Router();
