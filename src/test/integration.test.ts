@@ -14,7 +14,7 @@ import cors from '@koa/cors';
 import { createWarehouseRouter } from '../routes/warehouse.js';
 import { createOrderRouter } from '../routes/orders.js';
 
-const API_BASE_URL = 'http://localhost:3000';
+let API_BASE_URL: string;
 let server: Server;
 let mongoInstance: MongoMemoryServer;
 
@@ -42,7 +42,11 @@ async function createTestServer() {
     app.use(createOrderRouter(orderSystem).routes());
 
     return new Promise<Server>((resolve) => {
-        const server = app.listen(3000, () => {
+        const server = app.listen(0, () => {
+            const address = server.address();
+            if (address && typeof address === 'object') {
+                API_BASE_URL = `http://localhost:${address.port}`;
+            }
             resolve(server);
         });
     });
