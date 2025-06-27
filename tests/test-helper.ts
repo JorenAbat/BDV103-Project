@@ -22,8 +22,8 @@ export function setupApiTests(): void {
 
     afterAll(async () => {
         // Clean up MongoDB connection after all tests
-        // Only close if we're not using in-memory MongoDB
-        if (typeof global.MONGO_URI === 'undefined') {
+        // Only close if we're not using the MongoDB service (CI environment)
+        if (!process.env.MONGO_URI) {
             await closeMongoConnection();
         }
     });

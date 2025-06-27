@@ -1,12 +1,8 @@
 import { MongoClient } from 'mongodb';
 
 // The URL to connect to MongoDB
-// This URL includes:
-// - username: root
-// - password: example
-// - host: mongo (the service name from docker-compose)
-// - port: 27017 (default MongoDB port)
-const url = 'mongodb://root:example@mongo:27017';
+// Use MONGO_URI environment variable if available, otherwise fall back to default
+const url = process.env.MONGO_URI || 'mongodb://root:example@mongo:27017';
 
 // Create a new MongoDB client
 // This client will be used to connect to our database
