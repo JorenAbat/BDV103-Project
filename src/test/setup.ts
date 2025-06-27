@@ -11,7 +11,27 @@ declare global {
 }
 
 export async function setup() {
-  // Create new instance with explicit download options
+  // If MONGO_URI is provided (CI environment), use it directly
+  if (process.env.MONGO_URI) {
+    const uri = process.env.MONGO_URI;
+    global.MONGO_URI = uri;
+    
+    // Create a new client for tests
+    global.TEST_CLIENT = new MongoClient(uri);
+    await global.TEST_CLIENT.connect();
+    
+    // Return a mock instance for compatibility
+    return {
+      getUri: () => uri,
+      stop: async () => {
+        if (global.TEST_CLIENT) {
+          await global.TEST_CLIENT.close();
+        }
+      }
+    } as unknown as MongoMemoryServer;
+  }
+
+  // Otherwise, use mongodb-memory-server (local development)
   const instance = await MongoMemoryServer.create({
     binary: {
       version: '7.0.7',
