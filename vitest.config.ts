@@ -8,9 +8,7 @@ export default defineConfig({
     globals: true,                         // Enable global test functions
     environment: 'node',                   // Use Node.js environment
     setupFiles: ['./src/test/setup.ts'],
-    exclude: ['**/node_modules/**', '**/build/**', '**/client/**'],
-    testTimeout: 30000,                    // 30 seconds for individual tests
-    hookTimeout: 30000                     // 30 seconds for hooks
+    exclude: ['**/node_modules/**', '**/build/**', '**/client/**']
   },
   define: {
     'import.meta.vitest': 'undefined',     // Remove test code from production builds
