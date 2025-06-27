@@ -46,7 +46,7 @@ jobs:
           DEBUG: "mongodb-memory-server:*"
         run: |
           echo "=== Starting Unit Tests ==="
-          npm run test:ci -- --reporter=verbose --run src/ --timeout=30000
+          npm run test:ci -- --reporter=verbose --run src/
           echo "=== Unit Tests Completed ==="
 
       - name: Upload client SDK as artifact
@@ -88,5 +88,5 @@ jobs:
           DEBUG: "mongodb-memory-server:*"
         run: |
           echo "=== Starting API Tests ==="
-          npm run test:ci -- --reporter=verbose --run tests/ --timeout=30000
+          npm run test:ci -- --reporter=verbose --run tests/
           echo "=== API Tests Completed ===" 
