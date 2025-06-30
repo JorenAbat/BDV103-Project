@@ -20,7 +20,7 @@ export interface Filter {
 
 // If multiple filters are provided, any book that matches at least one of them should be returned
 // Within a single filter, a book would need to match all the given conditions
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = '/api';
 const BOOKS_ENDPOINT = `${API_BASE_URL}/books`;
 
 async function listBooks(filters?: Filter[]): Promise<Book[]> {

@@ -1,6 +1,6 @@
 import { Book, BookID } from "./assignment-1.js";
 const assignment = "assignment-2";
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = '/api';
 
 // The URL for the books endpoint
 const BOOKS_ENDPOINT = `${API_BASE_URL}/books`;

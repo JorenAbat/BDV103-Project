@@ -2,8 +2,8 @@
 export interface Book {
     // A unique identifier for the book
     id: string;
-    // The title of the book
-    title: string;
+    // The name of the book
+    name: string;
     // The name of the book's author
     author: string;
     // A description of what the book is about
