@@ -2,38 +2,20 @@ import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import cors from '@koa/cors';
 import Router from '@koa/router';
-import { BookRoutes } from './routes/books.route.js';
+import { RegisterRoutes } from '../build/routes.js';
+import { AppBookDatabaseState } from './test/database-state.js';
 
-const app = new Koa();
+const app = new Koa<AppBookDatabaseState>();
+const router = new Router();
 
 // Middleware
 app.use(cors());
 app.use(bodyParser());
 
-// Manual route registration (temporary replacement for TSOA)
-const router = new Router();
-const bookRoutes = new BookRoutes();
+// Register TSOA-generated routes
+RegisterRoutes(router);
 
-// Register book routes
-router.get('/books', async (ctx) => {
-  const { from, to } = ctx.query;
-  const books = await bookRoutes.getBooks(
-    from ? Number(from) : undefined,
-    to ? Number(to) : undefined
-  );
-  ctx.body = books;
-});
-
-router.get('/books/:id', async (ctx) => {
-  const book = await bookRoutes.getBook(ctx.params.id);
-  if (book) {
-    ctx.body = book;
-  } else {
-    ctx.status = 404;
-    ctx.body = { error: 'Book not found' };
-  }
-});
-
+// Use the router
 app.use(router.routes());
 app.use(router.allowedMethods());
 

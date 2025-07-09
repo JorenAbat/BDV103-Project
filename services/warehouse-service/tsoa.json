@@ -1,6 +1,7 @@
 {
   "entryFile": "src/server.ts",
   "noImplicitAdditionalProperties": "throw-on-extras",
+  "controllerPathGlobs": ["src/**/*route.ts"],
   "spec": {
     "outputDirectory": "build",
     "specVersion": 3,
@@ -9,6 +10,8 @@
     "version": "1.0.0"
   },
   "routes": {
-    "routesDir": "build"
-  }
+    "routesDir": "build",
+    "middleware": "koa"
+  },
+  "esModuleInterop": true
 } 

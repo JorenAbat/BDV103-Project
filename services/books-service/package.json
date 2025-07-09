@@ -2,7 +2,6 @@
   "name": "books-service",
   "version": "1.0.0",
   "description": "Book listings microservice",
-  "type": "module",
   "main": "index.js",
   "scripts": {
     "generate": "tsoa spec-and-routes",
