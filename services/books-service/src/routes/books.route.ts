@@ -1,7 +1,6 @@
-import { Route, Get, Post, Put, Delete, Query, Path, Body } from 'tsoa';
+import { Route, Get, Query, Path } from 'tsoa';
 import { Book } from '../domains/book-listing/domain.js';
 import { client } from '../db/mongodb.js';
-import { v4 as uuidv4 } from 'uuid';
 
 @Route('books')
 export class BookRoutes {
@@ -56,48 +55,51 @@ export class BookRoutes {
         };
     }
 
-    @Post()
-    public async addBook(@Body() book: Omit<Book, 'id'>): Promise<{ id: string }> {
-        const db = client.db('bookstore');
-        const booksCollection = db.collection('books');
-
-        const newBook = {
-            ...book,
-            id: uuidv4(),
-        };
-
-        await booksCollection.insertOne(newBook);
-        return { id: newBook.id };
-    }
-
-    @Put('{id}')
-    public async updateBook(@Path() id: string, @Body() book: Book): Promise<void> {
-        const db = client.db('bookstore');
-        const booksCollection = db.collection('books');
-
-        const updateData = {
-            ...book,
-        };
-
-        const result = await booksCollection.updateOne(
-            { id },
-            { $set: updateData }
-        );
-
-        if (result.matchedCount === 0) {
-            throw new Error(`Book with ID ${id} not found`);
-        }
-    }
-
-    @Delete('{id}')
-    public async deleteBook(@Path() id: string): Promise<void> {
-        const db = client.db('bookstore');
-        const booksCollection = db.collection('books');
-
-        const result = await booksCollection.deleteOne({ id });
-        
-        if (result.deletedCount === 0) {
-            throw new Error(`Book with ID ${id} not found`);
-        }
-    }
+    // TODO: Temporarily commented out due to TSOA ES module import issues
+    // Will fix in next steps when adding full CRUD operations
+    
+    // @Post()
+    // public async addBook(@Body() book: Omit<Book, 'id'>): Promise<{ id: string }> {
+    //     const db = client.db('bookstore');
+    //     const booksCollection = db.collection('books');
+    //
+    //     const newBook = {
+    //         ...book,
+    //         id: uuidv4(),
+    //     };
+    //
+    //     await booksCollection.insertOne(newBook);
+    //     return { id: newBook.id };
+    // }
+    //
+    // @Put('{id}')
+    // public async updateBook(@Path() id: string, @Body() book: Book): Promise<void> {
+    //     const db = client.db('bookstore');
+    //     const booksCollection = db.collection('books');
+    //
+    //     const updateData = {
+    //         ...book,
+    //     };
+    //
+    //     const result = await booksCollection.updateOne(
+    //         { id },
+    //         { $set: updateData }
+    //     );
+    //
+    //     if (result.matchedCount === 0) {
+    //         throw new Error(`Book with ID ${id} not found`);
+    //     }
+    // }
+    //
+    // @Delete('{id}')
+    // public async deleteBook(@Path() id: string): Promise<void> {
+    //     const db = client.db('bookstore');
+    //     const booksCollection = db.collection('books');
+    //
+    //     const result = await booksCollection.deleteOne({ id });
+    //     
+    //     if (result.deletedCount === 0) {
+    //         throw new Error(`Book with ID ${id} not found`);
+    //     }
+    // }
 } 

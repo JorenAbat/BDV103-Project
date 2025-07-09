@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "generate": "tsoa spec-and-routes",
-    "start": "npm run generate && tsx src/server.ts",
+    "start": "tsx src/server.ts",
     "dev": "npm run generate && tsx --watch src/server.ts",
     "lint": "eslint . --ext .ts",
     "test": "vitest"
