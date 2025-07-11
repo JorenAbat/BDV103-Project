@@ -18,7 +18,7 @@
         "start-all": "docker-compose up -d",
         "stop-all": "docker-compose down",
         "logs": "docker-compose logs -f",
-        "test-all": "npm test && cd services/books-service && npm test && cd ../warehouse-service && npm test && cd ../orders-service && npm test",
+        "test-all": "npm test",
         "build-swagger": "./build-swagger.sh"
     },
     "keywords": [],
