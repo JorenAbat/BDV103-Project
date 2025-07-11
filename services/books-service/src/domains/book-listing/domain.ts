@@ -12,6 +12,8 @@ export interface Book {
     price: number;
     // A URL to the book's cover image (optional)
     image?: string;
+    // The total stock level for this book (cached from warehouse)
+    totalStock: number;
 }
 
 // Interface for managing books in our system
@@ -30,4 +32,7 @@ export interface BookRepository {
     
     // Remove a book from the system
     deleteBook(id: string): Promise<void>;
+    
+    // Update the stock level for a book
+    updateBookStock(bookId: string, totalStock: number): Promise<void>;
 } 

@@ -10,6 +10,10 @@ const COLLECTION_NAME = 'warehouse';
 interface WarehouseDocument {
     // The unique identifier of the book
     bookId: string;
+    // Cached book name (from books service)
+    bookName: string;
+    // Cached book author (from books service)
+    bookAuthor: string;
     // List of locations where this book is stored
     locations: BookLocation[];
 }
@@ -28,6 +32,20 @@ export class MongoWarehouse implements Warehouse {
         this.messagingService.connect().catch((error: unknown) => {
             console.error('Failed to connect to messaging service:', error);
         });
+    }
+
+    // Function to update book information cache
+    async updateBookInfo(bookId: string, bookName: string, bookAuthor: string): Promise<void> {
+        await this.collection.updateOne(
+            { bookId },
+            { 
+                $set: { 
+                    bookName,
+                    bookAuthor
+                }
+            },
+            { upsert: true }
+        );
     }
 
     // Get all locations where a specific book is stored
@@ -49,8 +67,13 @@ export class MongoWarehouse implements Warehouse {
         // Get the current document for this book
         const doc = await this.collection.findOne({ bookId });
         let locations: BookLocation[] = [];
-        if (doc && doc.locations) {
-            locations = doc.locations;
+        let bookName = '';
+        let bookAuthor = '';
+        
+        if (doc) {
+            locations = doc.locations || [];
+            bookName = doc.bookName || '';
+            bookAuthor = doc.bookAuthor || '';
         }
         
         // Check if the book is already on this shelf
@@ -74,6 +97,8 @@ export class MongoWarehouse implements Warehouse {
             {
                 $set: {
                     bookId,
+                    bookName,
+                    bookAuthor,
                     locations
                 }
             },

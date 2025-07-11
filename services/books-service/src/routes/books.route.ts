@@ -22,6 +22,17 @@ export class BookRoutes {
         }
     }
 
+    // Function to update book stock cache
+    private async updateBookStock(bookId: string, totalStock: number): Promise<void> {
+        const db = client.db('bookstore');
+        const booksCollection = db.collection('books');
+
+        await booksCollection.updateOne(
+            { id: bookId },
+            { $set: { totalStock } }
+        );
+    }
+
     @Get()
     public async getBooks(
         @Query('from') from?: number,
@@ -50,7 +61,8 @@ export class BookRoutes {
             author: doc.author as string,
             description: doc.description as string,
             price: doc.price as number,
-            image: doc.image as string | undefined
+            image: doc.image as string | undefined,
+            totalStock: (doc.totalStock as number) || 0 // Default to 0 if not set
         }));
 
         return books;
@@ -70,7 +82,8 @@ export class BookRoutes {
             author: doc.author as string,
             description: doc.description as string,
             price: doc.price as number,
-            image: doc.image as string | undefined
+            image: doc.image as string | undefined,
+            totalStock: (doc.totalStock as number) || 0 // Default to 0 if not set
         };
     }
 
@@ -82,6 +95,7 @@ export class BookRoutes {
         const newBook = {
             ...book,
             id: uuidv4(),
+            totalStock: book.totalStock || 0 // Ensure totalStock is set
         };
 
         await booksCollection.insertOne(newBook);
