@@ -7,6 +7,8 @@ import { AppOrderDatabaseState } from './test/database-state.js';
 import { MongoOrderProcessor } from './domains/orders/mongodb-adapter.js';
 import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
 import { MongoClient } from 'mongodb';
+// @ts-expect-error: Importing built JS for runtime compatibility in Docker/production
+import { createMessagingService } from '../../../shared/dist/messaging.js';
 
 const app = new Koa<AppOrderDatabaseState>();
 const router = new Router();
@@ -19,14 +21,23 @@ app.use(bodyParser());
 const mongoUrl = process.env.MONGODB_URI || 'mongodb://root:example@mongo:27017/bookstore?authSource=admin';
 const client = new MongoClient(mongoUrl);
 
+// Initialize messaging service
+const messagingService = createMessagingService();
+
 // Initialize orders with MongoDB adapter
 let orders: MongoOrderProcessor;
 let warehouse: MongoWarehouse;
 
 async function initializeOrders() {
   try {
+    // Connect to RabbitMQ first
+    await messagingService.connect();
+    console.log('Connected to RabbitMQ');
+    
+    // Connect to MongoDB
     await client.connect();
     console.log('Connected to MongoDB');
+    
     warehouse = new MongoWarehouse(client, 'bookstore');
     orders = new MongoOrderProcessor(client, 'bookstore', warehouse);
     console.log('Orders initialized with MongoDB adapter');

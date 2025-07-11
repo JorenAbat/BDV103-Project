@@ -1,4 +1,4 @@
-import { Route, Post, Body, Request } from 'tsoa';
+import { Route, Get, Post, Body, Request } from 'tsoa';
 import { type ParameterizedContext, type DefaultContext, type Request as KoaRequest } from 'koa';
 import { OrderItem } from '../domains/orders/domain.js';
 import { AppOrderDatabaseState } from '../test/database-state.js';
@@ -17,6 +17,22 @@ export interface CreateOrderResponse {
 
 @Route('orders')
 export class OrderRoutes {
+    @Get()
+    public async getAllOrders(
+        @Request() request: KoaRequest
+    ): Promise<Record<string, unknown>> {
+        const ctx: ParameterizedContext<AppOrderDatabaseState, DefaultContext> = request.ctx;
+        const orders = ctx.state.orders;
+        
+        // Get all orders
+        const allOrders = await orders.getAllOrders();
+        
+        return {
+            orders: allOrders,
+            count: allOrders.length
+        };
+    }
+
     @Post()
     public async createOrder(
         @Body() orderData: CreateOrderRequest,

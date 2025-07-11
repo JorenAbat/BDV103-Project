@@ -46,6 +46,7 @@ export class BookRoutes {
         const books: Book[] = docs.map((doc) => ({
             id: doc.id as string,
             name: (doc.name ?? doc.title) as string, // support both, but prefer name
+            title: (doc.name ?? doc.title) as string, // title is an alias for name
             author: doc.author as string,
             description: doc.description as string,
             price: doc.price as number,

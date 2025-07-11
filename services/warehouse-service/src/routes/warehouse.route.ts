@@ -26,6 +26,50 @@ export class WarehouseRoutes {
         }
     }
 
+    @Get()
+    public async getAllWarehouseData(): Promise<Record<string, unknown>> {
+        // Return warehouse inventory summary
+        return { 
+            message: "Warehouse inventory",
+            status: "operational"
+        };
+    }
+
+    @Post()
+    public async addStock(
+        @Body() body: { bookId: string; shelfId: string; quantity: number },
+        @Request() request: KoaRequest
+    ): Promise<{ message: string }> {
+        const ctx: ParameterizedContext<AppWarehouseDatabaseState, DefaultContext> = request.ctx;
+        const warehouse = ctx.state.warehouse;
+        
+        const { bookId, shelfId, quantity } = body;
+        
+        if (!bookId || !shelfId || !quantity || quantity <= 0) {
+            throw new Error('Invalid request. Need bookId, shelfId, and positive quantity');
+        }
+
+        await warehouse.addBookToShelf(bookId, shelfId, quantity);
+
+        // Publish StockUpdated event
+        try {
+            await this.ensureMessagingConnected();
+            const event: StockEvent = {
+                type: 'StockUpdated',
+                bookId: bookId,
+                shelfId: shelfId,
+                quantity: quantity,
+                timestamp: new Date()
+            };
+            await this.messagingService.publishEvent(event, 'stock.updated');
+        } catch (error) {
+            console.error('Failed to publish StockUpdated event:', error);
+            // Don't fail the request if event publishing fails
+        }
+
+        return { message: 'Stock added successfully' };
+    }
+
     @Get('{book}')
     public async getBookInfo(
         @Path() book: string,
