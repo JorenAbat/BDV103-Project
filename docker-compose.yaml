@@ -31,10 +31,10 @@ services:
     environment:
       - PORT=3001
       - NODE_ENV=development
-      - MONGODB_URI=mongodb://root:example@mongo:27017/bookstore?authSource=admin
+      - MONGODB_URI=mongodb://root:example@mongo-books:27017/bookstore?authSource=admin
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
     depends_on:
-      - mongo
+      - mongo-books
       - rabbitmq
     ports:
       - "3001:3001"
@@ -49,10 +49,10 @@ services:
     environment:
       - PORT=3002
       - NODE_ENV=development
-      - MONGODB_URI=mongodb://root:example@mongo:27017/bookstore?authSource=admin
+      - MONGODB_URI=mongodb://root:example@mongo-warehouse:27017/bookstore?authSource=admin
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
     depends_on:
-      - mongo
+      - mongo-warehouse
       - rabbitmq
     ports:
       - "3002:3002"
@@ -67,10 +67,10 @@ services:
     environment:
       - PORT=3003
       - NODE_ENV=development
-      - MONGODB_URI=mongodb://root:example@mongo:27017/bookstore?authSource=admin
+      - MONGODB_URI=mongodb://root:example@mongo-orders:27017/bookstore?authSource=admin
       - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
     depends_on:
-      - mongo
+      - mongo-orders
       - rabbitmq
     ports:
       - "3003:3003"
@@ -88,12 +88,35 @@ services:
     expose:
       - "3004"
 
-  mongo:
+  # Books database (port 27018)
+  mongo-books:
     image: mongo:latest
     ports:
-      - "27017:27017"
+      - "27018:27017"
     volumes:
-      - mongodb_data:/data/db
+      - mongodb_books_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
+
+  # Warehouse database (port 27019)
+  mongo-warehouse:
+    image: mongo:latest
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongodb_warehouse_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=example
+
+  # Orders database (port 27020)
+  mongo-orders:
+    image: mongo:latest
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongodb_orders_data:/data/db
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=example
@@ -112,5 +135,7 @@ services:
     depends_on: []
 
 volumes:
-  mongodb_data:
+  mongodb_books_data:
+  mongodb_warehouse_data:
+  mongodb_orders_data:
   rabbitmq_data: 
