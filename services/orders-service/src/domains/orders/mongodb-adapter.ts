@@ -1,6 +1,6 @@
 import { Collection, MongoClient } from 'mongodb';
 import { Order, OrderItem, OrderRepository } from './domain.js';
-import { Warehouse } from '../warehouse/domain.js';
+import { BookCache } from './book-cache.js';
 // @ts-expect-error: Importing built JS for runtime, types not available
 import { createMessagingService, OrderEvent } from '../../../../../shared/dist/messaging.js';
 
@@ -18,9 +18,11 @@ export class MongoOrderProcessor implements OrderRepository {
     // The MongoDB collection that stores order data
     private collection: Collection<OrderDocument>;
     private messagingService = createMessagingService();
+    private bookCache: BookCache;
 
-    constructor(client: MongoClient, dbName: string, private warehouse: Warehouse) {
+    constructor(client: MongoClient, dbName: string, bookCache: BookCache) {
         this.collection = client.db(dbName).collection<OrderDocument>(COLLECTION_NAME);
+        this.bookCache = bookCache;
         
         // Initialize messaging service
         this.messagingService.connect().catch((error: unknown) => {
@@ -37,12 +39,9 @@ export class MongoOrderProcessor implements OrderRepository {
             }
         }
 
-        // Check if we have enough books in stock for each item
+        // Check if we have enough books in stock for each item using local cache
         for (const item of items) {
-            const locations = await this.warehouse.getBookLocations(item.bookId);
-            const totalStock = locations.reduce((sum: number, loc: { quantity: number }) => sum + loc.quantity, 0);
-            
-            if (totalStock < item.quantity) {
+            if (!this.bookCache.hasEnoughStock(item.bookId, item.quantity)) {
                 throw new Error('Not enough books available');
             }
         }
@@ -120,7 +119,8 @@ export class MongoOrderProcessor implements OrderRepository {
         );
     }
 
-    // Fulfill an order by marking it as fulfilled and updating inventory
+    // Fulfill an order by marking it as fulfilled
+    // Note: We no longer update inventory directly - that will be handled by events
     async fulfillOrder(orderId: string): Promise<Order> {
         // Get the order
         const order = await this.getOrder(orderId);
@@ -133,70 +133,43 @@ export class MongoOrderProcessor implements OrderRepository {
             throw new Error('Order is not in pending status');
         }
 
-        // Verify we have enough stock for all items before making any changes
+        // Verify we have enough stock for all items using local cache
         for (const item of order.items) {
-            const locations = await this.warehouse.getBookLocations(item.bookId);
-            const totalStock = locations.reduce((sum: number, loc: { quantity: number }) => sum + loc.quantity, 0);
-            
-            if (totalStock < item.quantity) {
+            if (!this.bookCache.hasEnoughStock(item.bookId, item.quantity)) {
                 throw new Error('Not enough books available');
             }
         }
 
-        // Try to remove books from the warehouse
-        try {
-            for (const item of order.items) {
-                const locations = await this.warehouse.getBookLocations(item.bookId);
-                let remainingQuantity = item.quantity;
+        // Update the order status in MongoDB
+        const updatedOrder: Order = {
+            ...order,
+            status: 'fulfilled',
+            fulfilledAt: new Date()
+        };
 
-                // Remove books from each location until we have enough
-                for (const location of locations) {
-                    if (remainingQuantity <= 0) break;
-                    
-                    const quantityToRemove = Math.min(location.quantity, remainingQuantity);
-                    await this.warehouse.removeBookFromShelf(item.bookId, location.shelfId, quantityToRemove);
-                    remainingQuantity -= quantityToRemove;
-                }
+        const result = await this.collection.updateOne(
+            { id: orderId },
+            { $set: updatedOrder }
+        );
 
-                if (remainingQuantity > 0) {
-                    throw new Error('Failed to remove all required books');
-                }
-            }
-
-            // Update the order status in MongoDB
-            const updatedOrder: Order = {
-                ...order,
-                status: 'fulfilled',
-                fulfilledAt: new Date()
-            };
-
-            const result = await this.collection.updateOne(
-                { id: orderId },
-                { $set: updatedOrder }
-            );
-
-            if (!result.acknowledged) {
-                throw new Error('Failed to update order status');
-            }
-
-            // Publish OrderFulfilled event
-            try {
-                const event: OrderEvent = {
-                    type: 'OrderFulfilled',
-                    orderId: orderId,
-                    items: order.items,
-                    timestamp: new Date()
-                };
-                await this.messagingService.publishEvent(event, 'order.fulfilled');
-            } catch (error) {
-                console.error('Failed to publish OrderFulfilled event:', error);
-                // Don't fail the operation if event publishing fails
-            }
-
-            return updatedOrder;
-        } catch (error) {
-            console.error('Error fulfilling order:', error);
-            throw error;
+        if (!result.acknowledged) {
+            throw new Error('Failed to update order status');
         }
+
+        // Publish OrderFulfilled event
+        try {
+            const event: OrderEvent = {
+                type: 'OrderFulfilled',
+                orderId: orderId,
+                items: order.items,
+                timestamp: new Date()
+            };
+            await this.messagingService.publishEvent(event, 'order.fulfilled');
+        } catch (error) {
+            console.error('Failed to publish OrderFulfilled event:', error);
+            // Don't fail the operation if event publishing fails
+        }
+
+        return updatedOrder;
     }
 } 

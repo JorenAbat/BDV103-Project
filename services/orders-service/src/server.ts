@@ -5,7 +5,7 @@ import Router from '@koa/router';
 import { RegisterRoutes } from '../build/routes.js';
 import { AppOrderDatabaseState } from './test/database-state.js';
 import { MongoOrderProcessor } from './domains/orders/mongodb-adapter.js';
-import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
+import { BookCache } from './domains/orders/book-cache.js';
 import { MongoClient } from 'mongodb';
 // @ts-expect-error: Importing built JS for runtime compatibility in Docker/production
 import { createMessagingService } from '../../../shared/dist/messaging.js';
@@ -26,7 +26,7 @@ const messagingService = createMessagingService();
 
 // Initialize orders with MongoDB adapter
 let orders: MongoOrderProcessor;
-let warehouse: MongoWarehouse;
+let bookCache: BookCache;
 
 async function initializeOrders() {
   try {
@@ -38,9 +38,12 @@ async function initializeOrders() {
     await client.connect();
     console.log('Connected to MongoDB');
     
-    warehouse = new MongoWarehouse(client, 'bookstore');
-    orders = new MongoOrderProcessor(client, 'bookstore', warehouse);
-    console.log('Orders initialized with MongoDB adapter');
+    // Initialize book cache
+    bookCache = new BookCache();
+    
+    // Initialize orders with book cache instead of warehouse
+    orders = new MongoOrderProcessor(client, 'bookstore', bookCache);
+    console.log('Orders initialized with MongoDB adapter and book cache');
   } catch (error) {
     console.error('Failed to initialize orders:', error);
     throw error;
