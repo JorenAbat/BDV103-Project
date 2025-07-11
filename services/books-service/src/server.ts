@@ -21,7 +21,7 @@ app.use(router.allowedMethods());
 
 const PORT = process.env.PORT || 3001;
 
-app.listen(PORT, () => {
+app.listen(Number(PORT), '0.0.0.0', () => {
   console.log(`Books service running on port ${PORT}`);
 });
 

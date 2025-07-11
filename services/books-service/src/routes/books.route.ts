@@ -2,9 +2,26 @@ import { Route, Get, Post, Put, Delete, Query, Path, Body } from 'tsoa';
 import { Book } from '../domains/book-listing/domain.js';
 import { client } from '../db/mongodb.js';
 import { v4 as uuidv4 } from 'uuid';
+// @ts-expect-error: Importing built JS for runtime, types not available
+import { createMessagingService, BookEvent } from '../../../../shared/dist/messaging.js';
 
 @Route('books')
 export class BookRoutes {
+    private messagingService = createMessagingService();
+
+    constructor() {
+        // Initialize messaging service when the class is created
+        this.messagingService.connect().catch((error: unknown) => {
+            console.error('Failed to connect to messaging service:', error);
+        });
+    }
+
+    private async ensureMessagingConnected(): Promise<void> {
+        if (!this.messagingService.isConnected()) {
+            await this.messagingService.connect();
+        }
+    }
+
     @Get()
     public async getBooks(
         @Query('from') from?: number,
@@ -67,6 +84,22 @@ export class BookRoutes {
         };
 
         await booksCollection.insertOne(newBook);
+
+        // Publish BookAdded event
+        try {
+            await this.ensureMessagingConnected();
+            const event: BookEvent = {
+                type: 'BookAdded',
+                bookId: newBook.id,
+                book: newBook,
+                timestamp: new Date()
+            };
+            await this.messagingService.publishEvent(event, 'book.added');
+        } catch (error) {
+            console.error('Failed to publish BookAdded event:', error);
+            // Don't fail the request if event publishing fails
+        }
+
         return { id: newBook.id };
     }
 
@@ -87,6 +120,21 @@ export class BookRoutes {
         if (result.matchedCount === 0) {
             throw new Error(`Book with ID ${id} not found`);
         }
+
+        // Publish BookUpdated event
+        try {
+            await this.ensureMessagingConnected();
+            const event: BookEvent = {
+                type: 'BookUpdated',
+                bookId: id,
+                book: book,
+                timestamp: new Date()
+            };
+            await this.messagingService.publishEvent(event, 'book.updated');
+        } catch (error) {
+            console.error('Failed to publish BookUpdated event:', error);
+            // Don't fail the request if event publishing fails
+        }
     }
 
     @Delete('{id}')
@@ -98,6 +146,20 @@ export class BookRoutes {
         
         if (result.deletedCount === 0) {
             throw new Error(`Book with ID ${id} not found`);
+        }
+
+        // Publish BookDeleted event
+        try {
+            await this.ensureMessagingConnected();
+            const event: BookEvent = {
+                type: 'BookDeleted',
+                bookId: id,
+                timestamp: new Date()
+            };
+            await this.messagingService.publishEvent(event, 'book.deleted');
+        } catch (error) {
+            console.error('Failed to publish BookDeleted event:', error);
+            // Don't fail the request if event publishing fails
         }
     }
 } 

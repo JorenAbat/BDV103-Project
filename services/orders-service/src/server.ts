@@ -2,50 +2,63 @@ import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import cors from '@koa/cors';
 import Router from '@koa/router';
+import { RegisterRoutes } from '../build/routes.js';
+import { AppOrderDatabaseState } from './test/database-state.js';
+import { MongoOrderProcessor } from './domains/orders/mongodb-adapter.js';
+import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
+import { MongoClient } from 'mongodb';
 
-const app = new Koa();
+const app = new Koa<AppOrderDatabaseState>();
+const router = new Router();
 
 // Middleware
 app.use(cors());
 app.use(bodyParser());
 
-// Manual route registration (temporary replacement for TSOA)
-const router = new Router();
+// Connect to MongoDB
+const mongoUrl = process.env.MONGODB_URI || 'mongodb://root:example@mongo:27017/bookstore?authSource=admin';
+const client = new MongoClient(mongoUrl);
 
-// Orders endpoints
-router.get('/orders', async (ctx) => {
+// Initialize orders with MongoDB adapter
+let orders: MongoOrderProcessor;
+let warehouse: MongoWarehouse;
+
+async function initializeOrders() {
   try {
-    // For now, return a simple orders response
-    ctx.body = [
-      { id: 'order1', items: [{ bookId: 'book1', quantity: 2 }], total: 29.98 },
-      { id: 'order2', items: [{ bookId: 'book2', quantity: 1 }], total: 15.99 }
-    ];
+    await client.connect();
+    console.log('Connected to MongoDB');
+    warehouse = new MongoWarehouse(client, 'bookstore');
+    orders = new MongoOrderProcessor(client, 'bookstore', warehouse);
+    console.log('Orders initialized with MongoDB adapter');
   } catch (error) {
-    ctx.status = 500;
-    ctx.body = { error: 'Failed to fetch orders', details: error instanceof Error ? error.message : String(error) };
+    console.error('Failed to initialize orders:', error);
+    throw error;
   }
+}
+
+// Middleware to inject orders into ctx.state
+app.use(async (ctx, next) => {
+  ctx.state.orders = orders;
+  await next();
 });
 
-router.post('/orders', async (ctx) => {
-  try {
-    const orderData = ctx.request.body;
-    // For now, return a simple created order response
-    const orderId = `order-${Date.now()}`;
-    ctx.status = 201;
-    ctx.body = { orderId, message: 'Order created successfully', orderData };
-  } catch (error) {
-    ctx.status = 500;
-    ctx.body = { error: 'Failed to create order', details: error instanceof Error ? error.message : String(error) };
-  }
-});
+// Register TSOA-generated routes
+RegisterRoutes(router);
 
+// Use the router
 app.use(router.routes());
 app.use(router.allowedMethods());
 
 const PORT = process.env.PORT || 3003;
 
-app.listen(PORT, () => {
-  console.log(`Orders service running on port ${PORT}`);
+// Initialize orders and start server
+initializeOrders().then(() => {
+  app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`Orders service running on port ${PORT}`);
+  });
+}).catch(error => {
+  console.error('Failed to start orders service:', error);
+  process.exit(1);
 });
 
 export default app; 

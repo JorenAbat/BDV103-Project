@@ -1,6 +1,8 @@
 import { Collection, MongoClient } from 'mongodb';
 import { Order, OrderItem, OrderRepository } from './domain.js';
 import { Warehouse } from '../warehouse/domain.js';
+// @ts-expect-error: Importing built JS for runtime, types not available
+import { createMessagingService, OrderEvent } from '../../../../../shared/dist/messaging.js';
 
 // The name of the MongoDB collection that stores orders
 const COLLECTION_NAME = 'orders';
@@ -15,9 +17,15 @@ interface OrderDocument extends Order {
 export class MongoOrderProcessor implements OrderRepository {
     // The MongoDB collection that stores order data
     private collection: Collection<OrderDocument>;
+    private messagingService = createMessagingService();
 
     constructor(client: MongoClient, dbName: string, private warehouse: Warehouse) {
         this.collection = client.db(dbName).collection<OrderDocument>(COLLECTION_NAME);
+        
+        // Initialize messaging service
+        this.messagingService.connect().catch((error: unknown) => {
+            console.error('Failed to connect to messaging service:', error);
+        });
     }
 
     // Create a new order with the specified books
@@ -53,6 +61,21 @@ export class MongoOrderProcessor implements OrderRepository {
             if (!result.acknowledged) {
                 throw new Error('Failed to create order');
             }
+
+            // Publish OrderCreated event
+            try {
+                const event: OrderEvent = {
+                    type: 'OrderCreated',
+                    orderId: order.id,
+                    items: order.items,
+                    timestamp: new Date()
+                };
+                await this.messagingService.publishEvent(event, 'order.created');
+            } catch (error) {
+                console.error('Failed to publish OrderCreated event:', error);
+                // Don't fail the operation if event publishing fails
+            }
+
             return order;
         } catch (error) {
             console.error('Error saving order to MongoDB:', error);
@@ -154,6 +177,20 @@ export class MongoOrderProcessor implements OrderRepository {
 
             if (!result.acknowledged) {
                 throw new Error('Failed to update order status');
+            }
+
+            // Publish OrderFulfilled event
+            try {
+                const event: OrderEvent = {
+                    type: 'OrderFulfilled',
+                    orderId: orderId,
+                    items: order.items,
+                    timestamp: new Date()
+                };
+                await this.messagingService.publishEvent(event, 'order.fulfilled');
+            } catch (error) {
+                console.error('Failed to publish OrderFulfilled event:', error);
+                // Don't fail the operation if event publishing fails
             }
 
             return updatedOrder;

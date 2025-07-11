@@ -12,7 +12,14 @@
         "fmt": "npm run generate && eslint . --ext .ts --fix",
         "type-check": "npm run generate && tsc --noEmit 2>&1 | grep -v \"build/tsoa-routes.ts\" || true",
         "test": "npm run generate && vitest",
-        "test:ci": "npm run generate && vitest run"
+        "test:ci": "npm run generate && vitest run",
+        "install-all": "npm install && cd services/books-service && npm install && cd ../warehouse-service && npm install && cd ../orders-service && npm install && cd ../swagger-docs && npm install && cd ../shared && npm install",
+        "build-all": "cd services/shared && npm run build && cd ../books-service && npm run build && cd ../warehouse-service && npm run build && cd ../orders-service && npm run build",
+        "start-all": "docker-compose up -d",
+        "stop-all": "docker-compose down",
+        "logs": "docker-compose logs -f",
+        "test-all": "npm test && cd services/books-service && npm test && cd ../warehouse-service && npm test && cd ../orders-service && npm test",
+        "build-swagger": "./build-swagger.sh"
     },
     "keywords": [],
     "author": "",

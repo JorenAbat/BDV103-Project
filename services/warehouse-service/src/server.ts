@@ -2,51 +2,65 @@ import Koa from 'koa';
 import bodyParser from 'koa-bodyparser';
 import cors from '@koa/cors';
 import Router from '@koa/router';
+import { RegisterRoutes } from '../build/routes.js';
+import { MongoWarehouse } from './domains/warehouse/mongodb-adapter.js';
+import { MongoClient } from 'mongodb';
+import { Warehouse } from './domains/warehouse/domain.js';
 
-const app = new Koa();
+// Simple interface for the database state
+interface AppWarehouseDatabaseState {
+    warehouse: Warehouse;
+}
+
+const app = new Koa<AppWarehouseDatabaseState>();
+const router = new Router();
 
 // Middleware
 app.use(cors());
 app.use(bodyParser());
 
-// Manual route registration (temporary replacement for TSOA)
-const router = new Router();
+// Connect to MongoDB
+const mongoUrl = process.env.MONGODB_URI || 'mongodb://root:example@mongo:27017/bookstore?authSource=admin';
+const client = new MongoClient(mongoUrl);
 
-// Warehouse stock endpoint
-router.get('/warehouse/stock', async (ctx) => {
+// Initialize warehouse with MongoDB adapter
+let warehouse: MongoWarehouse;
+
+async function initializeWarehouse() {
   try {
-    // For now, return a simple stock response
-    // This will be enhanced with proper warehouse integration
-    ctx.body = [
-      { bookId: 'book1', quantity: 10 },
-      { bookId: 'book2', quantity: 5 },
-      { bookId: 'book3', quantity: 15 }
-    ];
+    await client.connect();
+    console.log('Connected to MongoDB');
+    warehouse = new MongoWarehouse(client, 'bookstore');
+    console.log('Warehouse initialized with MongoDB adapter');
   } catch (error) {
-    ctx.status = 500;
-    ctx.body = { error: 'Failed to fetch warehouse stock', details: error instanceof Error ? error.message : String(error) };
+    console.error('Failed to initialize warehouse:', error);
+    throw error;
   }
+}
+
+// Middleware to inject warehouse into ctx.state
+app.use(async (ctx, next) => {
+  ctx.state.warehouse = warehouse;
+  await next();
 });
 
-// Get stock for specific book
-router.get('/warehouse/:bookId', async (ctx) => {
-  try {
-    const bookId = ctx.params.bookId;
-    // For now, return a simple response
-    ctx.body = { bookId, quantity: 8 };
-  } catch (error) {
-    ctx.status = 500;
-    ctx.body = { error: 'Failed to fetch book stock', details: error instanceof Error ? error.message : String(error) };
-  }
-});
+// Register TSOA-generated routes
+RegisterRoutes(router);
 
+// Use the router
 app.use(router.routes());
 app.use(router.allowedMethods());
 
 const PORT = process.env.PORT || 3002;
 
-app.listen(PORT, () => {
-  console.log(`Warehouse service running on port ${PORT}`);
+// Initialize warehouse and start server
+initializeWarehouse().then(() => {
+  app.listen(Number(PORT), '0.0.0.0', () => {
+    console.log(`Warehouse service running on port ${PORT}`);
+  });
+}).catch(error => {
+  console.error('Failed to start warehouse service:', error);
+  process.exit(1);
 });
 
 export default app; 

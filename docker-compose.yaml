@@ -32,10 +32,12 @@ services:
       - PORT=3001
       - NODE_ENV=development
       - MONGODB_URI=mongodb://root:example@mongo:27017/bookstore?authSource=admin
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
     depends_on:
       - mongo
-    expose:
-      - "3001"
+      - rabbitmq
+    ports:
+      - "3001:3001"
 
   # Warehouse microservice (port 3002)
   warehouse-service:
@@ -48,10 +50,12 @@ services:
       - PORT=3002
       - NODE_ENV=development
       - MONGODB_URI=mongodb://root:example@mongo:27017/bookstore?authSource=admin
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
     depends_on:
       - mongo
-    expose:
-      - "3002"
+      - rabbitmq
+    ports:
+      - "3002:3002"
 
   # Orders microservice (port 3003)
   orders-service:
@@ -64,10 +68,12 @@ services:
       - PORT=3003
       - NODE_ENV=development
       - MONGODB_URI=mongodb://root:example@mongo:27017/bookstore?authSource=admin
+      - RABBITMQ_URL=amqp://admin:admin123@rabbitmq:5672
     depends_on:
       - mongo
-    expose:
-      - "3003"
+      - rabbitmq
+    ports:
+      - "3003:3003"
 
   # Swagger documentation service (port 3004)
   swagger-docs:
@@ -92,5 +98,19 @@ services:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=example
 
+  # RabbitMQ message broker
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin123
+    depends_on: []
+
 volumes:
-  mongodb_data: 
+  mongodb_data:
+  rabbitmq_data: 
