@@ -10,7 +10,8 @@
     "dev": "npm run generate && tsx --watch src/server.ts",
     "generate": "tsoa spec-and-routes",
     "lint": "eslint . --ext .ts",
-    "test": "vitest"
+    "test": "vitest",
+    "seed": "npm run build && node dist/src/scripts/seed-books.js"
   },
   "dependencies": {
     "@koa/cors": "^5.0.0",
