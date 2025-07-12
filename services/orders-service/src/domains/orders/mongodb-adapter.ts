@@ -19,15 +19,41 @@ export class MongoOrderProcessor implements OrderRepository {
     private collection: Collection<OrderDocument>;
     private messagingService = createMessagingService();
     private bookCache: BookCache;
+    private client: MongoClient;
 
     constructor(client: MongoClient, dbName: string, bookCache: BookCache) {
         this.collection = client.db(dbName).collection<OrderDocument>(COLLECTION_NAME);
         this.bookCache = bookCache;
+        this.client = client;
         
         // Initialize messaging service
         this.messagingService.connect().catch((error: unknown) => {
             console.error('Failed to connect to messaging service:', error);
         });
+    }
+
+    // Check if we have enough stock using the MongoDB book_cache collection
+    private async hasEnoughStock(bookId: string, quantity: number): Promise<boolean> {
+        try {
+            const db = this.client.db('bookstore');
+            const bookCacheCollection = db.collection('book_cache');
+            
+            const bookCache = await bookCacheCollection.findOne({ bookId });
+            if (!bookCache) {
+                console.log(`Book ${bookId} not found in cache`);
+                return false;
+            }
+            
+            const availableStock = (bookCache.totalStock as number) || 0;
+            const hasEnough = availableStock >= quantity;
+            
+            console.log(`Stock check for book ${bookId}: requested ${quantity}, available ${availableStock}, has enough: ${hasEnough}`);
+            
+            return hasEnough;
+        } catch (error) {
+            console.error('Error checking stock:', error);
+            return false;
+        }
     }
 
     // Create a new order with the specified books
@@ -39,10 +65,11 @@ export class MongoOrderProcessor implements OrderRepository {
             }
         }
 
-        // Check if we have enough books in stock for each item using local cache
+        // Check if we have enough books in stock for each item using MongoDB cache
         for (const item of items) {
-            if (!this.bookCache.hasEnoughStock(item.bookId, item.quantity)) {
-                throw new Error('Not enough books available');
+            const hasEnough = await this.hasEnoughStock(item.bookId, item.quantity);
+            if (!hasEnough) {
+                throw new Error(`Not enough books available for book ${item.bookId}`);
             }
         }
 
@@ -133,10 +160,11 @@ export class MongoOrderProcessor implements OrderRepository {
             throw new Error('Order is not in pending status');
         }
 
-        // Verify we have enough stock for all items using local cache
+        // Verify we have enough stock for all items using MongoDB cache
         for (const item of order.items) {
-            if (!this.bookCache.hasEnoughStock(item.bookId, item.quantity)) {
-                throw new Error('Not enough books available');
+            const hasEnough = await this.hasEnoughStock(item.bookId, item.quantity);
+            if (!hasEnough) {
+                throw new Error(`Not enough books available for book ${item.bookId}`);
             }
         }
 

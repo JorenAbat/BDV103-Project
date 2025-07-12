@@ -111,9 +111,9 @@ async function startServer() {
     console.log('✅ DEBUG: Messaging service initialized');
     
     // Start the server
-    app.listen(Number(PORT), '0.0.0.0', () => {
+app.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`✅ DEBUG: Books service running on port ${PORT}`);
-    });
+});
   } catch (error) {
     console.error('❌ DEBUG: Failed to start books service:', error);
     process.exit(1);

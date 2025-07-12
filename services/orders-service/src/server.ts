@@ -203,18 +203,12 @@ app.use(async (ctx, next) => {
   await next();
 });
 
-// Register TSOA-generated routes
-RegisterRoutes(router);
-
-// Use the router
-app.use(router.routes());
-app.use(router.allowedMethods());
-
 const PORT = process.env.PORT || 3003;
 
 // Initialize orders, messaging, and start server
 async function startServer() {
   console.log('🚀 DEBUG: Starting orders service...');
+  console.log('🔧 DEBUG: startServer function called');
   try {
     // Initialize orders
     await initializeOrders();
@@ -223,6 +217,15 @@ async function startServer() {
     console.log('📡 DEBUG: Initializing messaging service...');
     await initializeMessaging();
     console.log('✅ DEBUG: Messaging service initialized');
+    
+    console.log('🔧 DEBUG: Reached point after messaging initialization');
+    
+    // Register TSOA-generated routes
+    RegisterRoutes(router);
+
+    // Use the router
+    app.use(router.routes());
+    app.use(router.allowedMethods());
     
     // Start the server
     app.listen(Number(PORT), '0.0.0.0', () => {

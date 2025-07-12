@@ -162,12 +162,12 @@ async function startServer() {
     console.log('✅ DEBUG: Messaging service initialized');
     
     // Start the server
-    app.listen(Number(PORT), '0.0.0.0', () => {
+  app.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`✅ DEBUG: Warehouse service running on port ${PORT}`);
-    });
+  });
   } catch (error) {
     console.error('❌ DEBUG: Failed to start warehouse service:', error);
-    process.exit(1);
+  process.exit(1);
   }
 }
 

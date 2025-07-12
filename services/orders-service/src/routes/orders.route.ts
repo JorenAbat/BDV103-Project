@@ -1,4 +1,4 @@
-import { Route, Get, Post, Body, Request } from 'tsoa';
+import { Route, Get, Post, Put, Body, Request, Path } from 'tsoa';
 import { type ParameterizedContext, type DefaultContext, type Request as KoaRequest } from 'koa';
 import { OrderItem } from '../domains/orders/domain.js';
 import { AppOrderDatabaseState } from '../test/database-state.js';
@@ -13,6 +13,13 @@ export interface CreateOrderResponse {
     orderId: string;
     status: string;
     createdAt: string;
+}
+
+// Response interface for order fulfillment
+export interface FulfillOrderResponse {
+    orderId: string;
+    status: string;
+    fulfilledAt: string;
 }
 
 @Route('orders')
@@ -48,6 +55,24 @@ export class OrderRoutes {
             orderId: order.id,
             status: order.status,
             createdAt: order.createdAt.toISOString()
+        };
+    }
+
+    @Put('{orderId}/fulfill')
+    public async fulfillOrder(
+        @Path() orderId: string,
+        @Request() request: KoaRequest
+    ): Promise<FulfillOrderResponse> {
+        const ctx: ParameterizedContext<AppOrderDatabaseState, DefaultContext> = request.ctx;
+        const orders = ctx.state.orders;
+        
+        // Fulfill the order using the order system
+        const order = await orders.fulfillOrder(orderId);
+        
+        return {
+            orderId: order.id,
+            status: order.status,
+            fulfilledAt: order.fulfilledAt!.toISOString()
         };
     }
 } 
