@@ -11,13 +11,17 @@ declare global {
 }
 
 export async function setup() {
-  // Create new instance with explicit download options
+  // Create new instance with explicit download options and unique download directory
   const instance = await MongoMemoryServer.create({
     binary: {
       version: '7.0.7',
-      downloadDir: path.join(os.tmpdir(), 'mongodb-binaries'),
+      downloadDir: path.join(os.tmpdir(), `mongodb-binaries-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`),
       checkMD5: false,
       systemBinary: process.env.MONGOMS_SYSTEM_BINARY
+    },
+    instance: {
+      port: undefined, // Let it choose a random port
+      dbName: `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     }
   });
 
