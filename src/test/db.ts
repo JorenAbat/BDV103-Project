@@ -14,6 +14,7 @@ export interface Book {
   isbn: string;
   price: number;
   quantity: number;
+  totalStock?: number;  // Add stock information for new architecture
 }
 
 export interface BookDatabaseAccessor {

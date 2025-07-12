@@ -4,6 +4,7 @@ import { MongoWarehouse } from '../domains/warehouse/mongodb-adapter.js';
 import { getBookDatabase } from './db.js';
 import { setup, teardown } from './setup.js';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
+import { createMockMessagingService } from './mock-messaging.js';
 
 // Test both in-memory and MongoDB implementations
 describe.each([
@@ -12,17 +13,21 @@ describe.each([
 ])('Warehouse (%s)', (name) => {
     let warehouse: InMemoryWarehouse | MongoWarehouse;
     let mongoInstance: MongoMemoryServer;
+    let mockMessaging: ReturnType<typeof createMockMessagingService>;
     
     beforeAll(async () => {
         if (name === 'MongoDB') {
             mongoInstance = await setup();
         }
+        mockMessaging = createMockMessagingService();
+        await mockMessaging.connect();
     }, 30000);
 
     afterAll(async () => {
         if (name === 'MongoDB') {
             await teardown(mongoInstance);
         }
+        await mockMessaging.disconnect();
     }, 30000);
 
     beforeEach(async () => {
@@ -33,6 +38,7 @@ describe.each([
         } else {
             warehouse = new InMemoryWarehouse();
         }
+        mockMessaging.clearEvents();
     });
 
     describe('Adding books to shelves', () => {
@@ -97,6 +103,56 @@ describe.each([
 
             const contents = await warehouse.getShelfContents('empty-shelf');
             expect(contents).toHaveLength(0);
+        });
+    });
+
+    describe('Event-driven book info updates', () => {
+        it('should handle book added events', async () => {
+            // Simulate a book added event
+            const bookEvent = {
+                type: 'BookAdded',
+                bookId: 'book-123',
+                book: {
+                    id: 'book-123',
+                    name: 'Test Book',
+                    author: 'Test Author',
+                    description: 'Test description',
+                    price: 29.99
+                },
+                timestamp: new Date()
+            };
+            
+            await mockMessaging.publishEvent(bookEvent, 'book.added');
+            
+            // Verify the event was published
+            const events = mockMessaging.getEventsByType('BookAdded');
+            expect(events).toHaveLength(1);
+            expect(events[0].bookId).toBe('book-123');
+            expect(events[0].book?.name).toBe('Test Book');
+        });
+
+        it('should handle book updated events', async () => {
+            // Simulate a book updated event
+            const bookEvent = {
+                type: 'BookUpdated',
+                bookId: 'book-456',
+                book: {
+                    id: 'book-456',
+                    name: 'Updated Book',
+                    author: 'Updated Author',
+                    description: 'Updated description',
+                    price: 39.99
+                },
+                timestamp: new Date()
+            };
+            
+            await mockMessaging.publishEvent(bookEvent, 'book.updated');
+            
+            // Verify the event was published
+            const events = mockMessaging.getEventsByType('BookUpdated');
+            expect(events).toHaveLength(1);
+            expect(events[0].bookId).toBe('book-456');
+            expect(events[0].book?.name).toBe('Updated Book');
         });
     });
 }); 
