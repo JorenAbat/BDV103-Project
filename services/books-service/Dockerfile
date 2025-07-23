@@ -28,11 +28,11 @@ FROM node:20-alpine AS production
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S booksuser -u 1001
 
-# Set working directory
-WORKDIR /app
+# Set working directory to match build structure
+WORKDIR /app/services/books-service
 
-# Copy shared service built files
-COPY --from=builder --chown=booksuser:nodejs /app/services/shared/ ./services/shared/
+# Copy shared service built files (maintain relative path structure)
+COPY --from=builder --chown=booksuser:nodejs /app/services/shared/ ../shared/
 
 # Copy books-service package files
 COPY --from=builder --chown=booksuser:nodejs /app/services/books-service/package*.json ./

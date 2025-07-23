@@ -3,8 +3,9 @@ FROM ghcr.io/mcmastercce/bvd-103-mcmasterful-books/mcmasterful-books-docker:main
 
 # Create non-root user for security
 USER root
-RUN addgroup -g 1001 -S frontend
-RUN adduser -S frontenduser -u 1001
+RUN groupadd -g 1001 frontend
+RUN useradd -r -u 1001 -g frontend -m -d /home/frontenduser frontenduser
+RUN chown -R frontenduser:frontend /home/frontenduser
 
 # Copy our adapter code into the image
 COPY --chown=frontenduser:frontend adapter/ /source/adapter/

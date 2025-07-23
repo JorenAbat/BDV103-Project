@@ -28,11 +28,11 @@ FROM node:20-alpine AS production
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S ordersuser -u 1001
 
-# Set working directory
-WORKDIR /app
+# Set working directory to match build structure
+WORKDIR /app/services/orders-service
 
-# Copy shared service built files
-COPY --from=builder --chown=ordersuser:nodejs /app/services/shared/ ./services/shared/
+# Copy shared service built files (maintain relative path structure)
+COPY --from=builder --chown=ordersuser:nodejs /app/services/shared/ ../shared/
 
 # Copy orders-service package files
 COPY --from=builder --chown=ordersuser:nodejs /app/services/orders-service/package*.json ./

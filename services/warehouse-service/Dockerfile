@@ -28,11 +28,11 @@ FROM node:20-alpine AS production
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S warehouseuser -u 1001
 
-# Set working directory
-WORKDIR /app
+# Set working directory to match build structure
+WORKDIR /app/services/warehouse-service
 
-# Copy shared service built files
-COPY --from=builder --chown=warehouseuser:nodejs /app/services/shared/ ./services/shared/
+# Copy shared service built files (maintain relative path structure)
+COPY --from=builder --chown=warehouseuser:nodejs /app/services/shared/ ../shared/
 
 # Copy warehouse-service package files
 COPY --from=builder --chown=warehouseuser:nodejs /app/services/warehouse-service/package*.json ./
