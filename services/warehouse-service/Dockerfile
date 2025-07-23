@@ -1,5 +1,5 @@
 # Multi-stage build for smaller, more secure production images
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 # Set working directory
 WORKDIR /app
@@ -19,10 +19,10 @@ RUN npm install && npm run build
 
 # Install dependencies and build warehouse-service
 WORKDIR /app/services/warehouse-service
-RUN npm install && npm run build
+RUN npm install && npm run generate && npm run build
 
 # Production stage
-FROM node:18-alpine AS production
+FROM node:20-alpine AS production
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
