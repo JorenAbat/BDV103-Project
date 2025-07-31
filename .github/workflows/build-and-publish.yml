@@ -50,26 +50,26 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
     
-    - name: Generate image tags
-      id: tags
-      run: |
-        IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}"
-        TAGS="${IMAGE}:latest"
-        
-        if [[ "${{ github.event_name }}" == "release" ]]; then
-          TAGS="${TAGS},${IMAGE}:${{ github.event.release.tag_name }}"
-        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-          TAGS="${TAGS},${IMAGE}:main"
-        fi
-        
-        echo "tags=${TAGS}" >> $GITHUB_OUTPUT
-        echo "Generated tags: ${TAGS}"
-    
-    - name: Build and push Docker image
+    - name: Build and push Docker image for main branch
+      if: github.event_name == 'push'
       uses: docker/build-push-action@v5
       with:
         context: .
         file: ${{ matrix.dockerfile }}
         push: true
-        tags: ${{ steps.tags.outputs.tags }}
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:latest
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:main
+        platforms: linux/amd64
+    
+    - name: Build and push Docker image for release
+      if: github.event_name == 'release'
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ${{ matrix.dockerfile }}
+        push: true
+        tags: |
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:latest
+          ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ github.event.release.tag_name }}
         platforms: linux/amd64 
