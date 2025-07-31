@@ -47,23 +47,29 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     
-    - name: Extract metadata
-      id: meta
-      uses: docker/metadata-action@v5
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
-        tags: |
-          type=ref,event=branch
-          type=ref,event=pr
-          type=ref,event=tag
-          type=raw,value=latest,enable={{is_default_branch}}
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Generate image tags
+      id: tags
+      run: |
+        IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}"
+        TAGS="${IMAGE}:latest"
+        
+        if [[ "${{ github.event_name }}" == "release" ]]; then
+          TAGS="${TAGS},${IMAGE}:${{ github.event.release.tag_name }}"
+        elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+          TAGS="${TAGS},${IMAGE}:main"
+        fi
+        
+        echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+        echo "Generated tags: ${TAGS}"
     
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ${{ matrix.service == 'front-end' && '.' || '.' }}
+        context: .
         file: ${{ matrix.dockerfile }}
         push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
+        tags: ${{ steps.tags.outputs.tags }}
         platforms: linux/amd64 
