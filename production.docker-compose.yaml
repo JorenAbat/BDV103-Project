@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # Nginx reverse proxy - routes requests to microservices
+  nginx:
+    image: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - front-end
+      - books-service
+      - warehouse-service
+      - orders-service
+      - swagger-docs
+
+  # Frontend application
+  front-end:
+    image: ghcr.io/jorenabat/bdv103-project/front-end:latest
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+
+  # Books microservice (port 3001)
+  books-service:
+    image: ghcr.io/jorenabat/bdv103-project/books-service:latest
+    environment:
+      - PORT=3001
+      - NODE_ENV=${NODE_ENV:-production}
+      - MONGODB_URI=${MONGODB_URI_BOOKS:-mongodb://root:example@mongo-books:27017/bookstore?authSource=admin}
+      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+    depends_on:
+      - mongo-books
+      - rabbitmq
+    ports:
+      - "3001:3001"
+
+  # Warehouse microservice (port 3002)
+  warehouse-service:
+    image: ghcr.io/jorenabat/bdv103-project/warehouse-service:latest
+    environment:
+      - PORT=3002
+      - NODE_ENV=${NODE_ENV:-production}
+      - MONGODB_URI=${MONGODB_URI_WAREHOUSE:-mongodb://root:example@mongo-warehouse:27017/bookstore?authSource=admin}
+      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+    depends_on:
+      - mongo-warehouse
+      - rabbitmq
+    ports:
+      - "3002:3002"
+
+  # Orders microservice (port 3003)
+  orders-service:
+    image: ghcr.io/jorenabat/bdv103-project/orders-service:latest
+    environment:
+      - PORT=3003
+      - NODE_ENV=${NODE_ENV:-production}
+      - MONGODB_URI=${MONGODB_URI_ORDERS:-mongodb://root:example@mongo-orders:27017/bookstore?authSource=admin}
+      - RABBITMQ_URL=${RABBITMQ_URL:-amqp://admin:admin123@rabbitmq:5672}
+    depends_on:
+      - mongo-orders
+      - rabbitmq
+    ports:
+      - "3003:3003"
+
+  # Swagger documentation service (port 3004)
+  swagger-docs:
+    image: ghcr.io/jorenabat/bdv103-project/swagger-docs:latest
+    environment:
+      - PORT=3004
+      - NODE_ENV=${NODE_ENV:-production}
+    expose:
+      - "3004"
+
+  # Books database (port 27018)
+  mongo-books:
+    image: mongo:latest
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_books_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-example}
+
+  # Warehouse database (port 27019)
+  mongo-warehouse:
+    image: mongo:latest
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongodb_warehouse_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-example}
+
+  # Orders database (port 27020)
+  mongo-orders:
+    image: mongo:latest
+    ports:
+      - "27020:27017"
+    volumes:
+      - mongodb_orders_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USERNAME:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD:-example}
+
+  # RabbitMQ message broker
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-admin}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-admin123}
+
+volumes:
+  mongodb_books_data:
+  mongodb_warehouse_data:
+  mongodb_orders_data:
+  rabbitmq_data: 
